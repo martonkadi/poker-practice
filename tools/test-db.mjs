@@ -64,7 +64,7 @@ try {
   assert(!foreignRead.error && foreignRead.data.length === 0, 'Another user read private hand');
   const anonymous = createClient(url, anon, { auth: { persistSession: false } });
   const anonymousRead = await anonymous.from('hands').select('id');
-  assert(!anonymousRead.error && anonymousRead.data.length === 0, 'Anonymous client read private hand');
+  assert(!!anonymousRead.error, 'Anonymous SELECT grant was not denied');
   const foreignWrite = await b.client.from('hands').insert({ id: crypto.randomUUID(), user_id: a.id, session_id: sessionId, sequence: 9, completed_at: new Date().toISOString(), byte_count: 1, record: {} });
   assert(!!foreignWrite.error, 'Direct client write bypassed sync');
   const directUpdate = await a.client.from('hands').update({ record: { heroNet: 999 } }).eq('id', first.id);
