@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { rebuildPotLedger, settlePots } from 'poker-engine-ts';
-import type { ShowdownSummary } from 'poker-engine-ts';
+import { DEFAULT_RANDOM_STATE_CONFIG, SessionManager, applyOptionToState, generateRandomState, rebuildPotLedger, selectDecisionContext, settlePots } from 'poker-engine-ts';
+import type { Card as EngineCard, ShowdownSummary } from 'poker-engine-ts';
+import { cardToText } from '@poker/contracts';
 import { applyAction, createHand, frame, hole, isSettled, legalActions, observe, restoreState, result } from './index';
 
 describe('poker engine adapter', () => {
@@ -126,5 +127,62 @@ describe('poker engine adapter', () => {
     const payout = settlePots(snapshot, summary);
     expect(Object.fromEntries(payout.entries.map(x => [x.playerId, x.amount]))).toEqual({ b: 252, c: 251 });
     expect(payout.entries.reduce((sum, x) => sum + x.amount, 0)).toBe(503);
+  });
+
+  it('replays a complete three-seat all-in hand with unequal stacks', async () => {
+    const dealt = await generateRandomState({
+      config: { ...DEFAULT_RANDOM_STATE_CONFIG, maxSeats: 6, startingStack: 201,
+        blindSchedule: [{ level: 1, smallBlind: 1, bigBlind: 2 }], autoAdvance: true },
+      seats: [
+        { playerId: 'a', seatIndex: 0, stack: 101 },
+        { playerId: 'b', seatIndex: 1, stack: 201 },
+        { playerId: 'c', seatIndex: 2, stack: 201 }
+      ],
+      steps: { min: 0, max: 0 },
+      managerOptions: { sessionId: crypto.randomUUID(), buttonIndex: 0, perTurnMs: 0,
+        deck: Array.from({ length: 52 }, (_, i) => cardToText(i) as EngineCard) }
+    });
+    let state = dealt.session;
+    for (const type of ['all-in', 'all-in', 'call']) {
+      const decision = selectDecisionContext(state as never);
+      const option = decision.availableActions.find(x => x.type === type && !x.disabled);
+      expect(option, `${decision.actor} must have a legal ${type}`).toBeDefined();
+      state = (await applyOptionToState(state, decision.actor!, option!)).session;
+    }
+    expect(selectDecisionContext(state as never).actor).toBeFalsy();
+    expect(state.activeSnapshot.hand.stage).toBe('settled');
+    expect(state.activeSnapshot.hand.payouts?.entries.reduce((sum, entry) => sum + entry.amount, 0)).toBe(503);
+    expect(state.activeSnapshot.hand.payouts?.entries.flatMap(entry => entry.potIds)).toContain('pot-side-1');
+    expect(state.activeSnapshot.seating.seats.reduce((sum, seat) => sum + seat.stack, 0)).toBe(503);
+    const replayed = SessionManager.resume({ sessionId: state.id, config: state.config, runtimeContext: state.runtimeContext,
+      initialSnapshot: state.initialSnapshot, events: state.events, metrics: state.metrics, channels: state.channels });
+    expect(replayed.session.activeSnapshot).toEqual(state.activeSnapshot);
+  });
+
+  it('conserves chips and replays a six-seat passive hand at the engine boundary', async () => {
+    const dealt = await generateRandomState({
+      config: { ...DEFAULT_RANDOM_STATE_CONFIG, maxSeats: 6, startingStack: 100,
+        blindSchedule: [{ level: 1, smallBlind: 1, bigBlind: 2 }], autoAdvance: true },
+      seats: Array.from({ length: 6 }, (_, seatIndex) => ({ playerId: `p${seatIndex}`, seatIndex, stack: 100 })),
+      steps: { min: 0, max: 0 },
+      managerOptions: { sessionId: crypto.randomUUID(), buttonIndex: 0, perTurnMs: 0,
+        deck: Array.from({ length: 52 }, (_, i) => cardToText(i) as EngineCard) }
+    });
+    let state = dealt.session;
+    for (let step = 0; step < 60; step++) {
+      const decision = selectDecisionContext(state as never);
+      if (!decision.actor) break;
+      const option = decision.availableActions.find(x => !x.disabled && x.type === 'check')
+        ?? decision.availableActions.find(x => !x.disabled && x.type === 'call');
+      expect(option, `${decision.actor} must be able to continue passively`).toBeDefined();
+      state = (await applyOptionToState(state, decision.actor, option!)).session;
+      const total = state.activeSnapshot.seating.seats.reduce((sum, seat) => sum + seat.stack, 0)
+        + state.activeSnapshot.pots.main.amount + state.activeSnapshot.pots.sides.reduce((sum, pot) => sum + pot.amount, 0);
+      expect(total).toBe(600);
+    }
+    expect(state.activeSnapshot.hand.stage).toBe('settled');
+    const replayed = SessionManager.resume({ sessionId: state.id, config: state.config, runtimeContext: state.runtimeContext,
+      initialSnapshot: state.initialSnapshot, events: state.events, metrics: state.metrics, channels: state.channels });
+    expect(replayed.session.activeSnapshot).toEqual(state.activeSnapshot);
   });
 });

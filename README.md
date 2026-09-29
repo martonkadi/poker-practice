@@ -2,7 +2,7 @@
 
 A desktop-focused heads-up no-limit Texas Hold’em practice site. Play 100bb hands against Easy or Standard **experimental** bots, then review decisions with pot odds and sampled equity against uniform legal opponent hands. These heuristics are not GTO-optimal and the review does not calculate EV loss. Practice chips have no cash value.
 
-**Current status (2026-09-29):** guest gameplay, local recovery/history/review/progress, import/export, and the static build pass local checks. Google OAuth, cloud sync, database security, and account deletion are implemented but have not been verified against a running Supabase project. The private GitHub remote and production deployment await account access. See [PLAN.md](PLAN.md) and [acceptance evidence](docs/acceptance.md) for exact gates.
+**Current status (2026-09-29):** guest gameplay, local recovery/history/review/progress, import/export, and the static build pass local checks. Google OAuth, cloud sync, database security, and account deletion are implemented but have not been verified against a running Supabase project. The owner created the [private GitHub repository](https://github.com/martonkadi/poker-practice); CI and production deployment remain unverified. See [PLAN.md](PLAN.md) and [acceptance evidence](docs/acceptance.md) for exact gates.
 
 ![Actual desktop practice table](docs/screenshots/table-desktop.png)
 

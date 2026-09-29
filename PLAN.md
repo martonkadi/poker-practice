@@ -1,6 +1,6 @@
 # Poker Practice implementation plan
 
-Status: `in_progress` (updated 2026-09-29). Current milestone: M1/M4 local verification. Next task: add full multiway replay and widen browser latency sampling, then audit cloud tests when a database becomes available. Local Supabase validation is blocked by unavailable Docker; provider account access will follow after the user connects it. This document is the implementation source of truth.
+Status: `in_progress` (updated 2026-09-29). Current milestone: M0 GitHub bootstrap and M1/M4 local verification. Next task: push the verified local commits to the private `martonkadi/poker-practice` repository, inspect CI, then audit cloud tests when a database becomes available. Local Supabase validation is blocked by unavailable Docker. This document is the implementation source of truth.
 
 ## Objective
 
@@ -14,8 +14,8 @@ Statuses are `not_started`, `in_progress`, `blocked`, and `complete`. Mark a mil
 
 | ID | Status | Work and gate |
 | --- | --- | --- |
-| M0 Bootstrap | blocked | Local workspace, docs, CI and guest shell exist. Private GitHub remote and clean-clone CI require account access. |
-| M1 Rules | in_progress | Adapter, 100-hand conservation/replay, board-only tie and upstream engine-level multiway/odd-chip settlement pass; PokerKit confirms the three-player main/side-pot split, but full multiway replay remains. Depends on M0 source setup. |
+| M0 Bootstrap | in_progress | Local workspace, docs, CI and guest shell exist. The owner created the private GitHub repository; push and clean-clone CI verification remain. |
+| M1 Rules | in_progress | Adapter, 100-hand conservation/replay, board-only tie, three-seat unequal-stack all-in replay, six-seat passive replay and upstream odd-chip settlement pass; PokerKit confirms the independent three-player main/side-pot split. V1 adapter remains heads-up. Depends on M0 source setup. |
 | M2 Bots | in_progress | Worker and policies run; full 10,000-pair benchmark and strength gate remain. Depends on M1. |
 | M3 Play | in_progress | Heads-up UI, recovery, Web Locks, keyboard completion, two-tab ownership and 100 automated hands pass; manual smoke remains. Depends on M2. |
 | M4 Review | in_progress | Local history, review, stats, immutable hand records, offline bookmark queue and import/export implemented; broader persistence and hindsight tests remain. Depends on M3. |
@@ -42,9 +42,9 @@ Record commands, dates, result summaries and links in `docs/acceptance.md`. The 
 
 ## Blockers
 
-Implementation blockers: Rules adapter and active UI presently name only two actors; multiway pots are tested through the upstream settlement API and independent PokerKit pot split, but full multiway hand replay remains. The full benchmark is unrun. Local Supabase migration may need fixes after execution. These are unfinished implementation work, not accepted waivers.
+Implementation blockers: Rules adapter and active UI presently name only two actors; engine-level three- and six-seat fixtures preserve future settlement coverage. The full benchmark is unrun. Local Supabase migration may need fixes after execution. These are unfinished implementation work, not accepted waivers.
 
-External access: no GitHub credential or signed-in browser session is available; GitHub CLI is absent. Docker is absent, preventing local Supabase execution here. The user will connect GitHub, Supabase, Cloudflare and Google later. These prevent remote creation, CI evidence and production verification. No secrets should be pasted into tracked files.
+External access: the owner created `https://github.com/martonkadi/poker-practice`; authenticated Git reads succeed, and an unauthenticated GitHub API request returns 404, consistent with a private repository. GitHub CLI is absent. Docker is absent, preventing local Supabase execution here. Supabase, Cloudflare and Google access remains unavailable, preventing production verification. No secrets should be pasted into tracked files.
 
 ## Decisions
 
@@ -55,6 +55,7 @@ External access: no GitHub credential or signed-in browser session is available;
 - 2026-09-29: Production deals use a local Web Crypto rejection-sampled Fisher–Yates deck passed into the engine; deterministic RNG is injected only for tests/benchmarks.
 - 2026-09-29: Production deploy is manual and migration-first. Guest-only local operation remains available without providers.
 - 2026-09-29: Store bookmarks separately from immutable completed hand records so offline edits cannot conflict with idempotent hand upload retries; synchronize bookmark changes after retained hands.
+- 2026-09-29: The owner chose `martonkadi/poker-practice` as the private GitHub repository name, replacing the handoff's working repository name `poker`.
 
 ## Evidence and PRs
 
