@@ -1,0 +1,1 @@
+{ "name": "@poker/persistence", "version": "0.1.0", "private": true, "type": "module", "exports": "./src/index.ts", "dependencies": { "@poker/contracts": "workspace:*", "@poker/poker": "workspace:*", "dexie": "4.4.6", "zod": "4.6.5", "@supabase/supabase-js": "2.117.2" } }

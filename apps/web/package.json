@@ -1,0 +1,27 @@
+{
+  "name": "@poker/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config ../../vite.config.ts",
+    "build": "vite build --config ../../vite.config.ts",
+    "preview": "vite preview --config ../../vite.config.ts"
+  },
+  "dependencies": {
+    "@poker/analysis": "workspace:*",
+    "@poker/bots": "workspace:*",
+    "@poker/contracts": "workspace:*",
+    "@poker/persistence": "workspace:*",
+    "@poker/poker": "workspace:*",
+    "@supabase/supabase-js": "2.117.2",
+    "@vitejs/plugin-react": "6.1.1",
+    "dexie": "4.4.6",
+    "poker-engine-ts": "0.1.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "7.13.1",
+    "vite": "8.3.1",
+    "zod": "4.6.5"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["vite/client", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@poker/contracts": ["packages/contracts/src/index.ts"],
+      "@poker/poker": ["packages/poker/src/index.ts"],
+      "@poker/bots": ["packages/bots/src/index.ts"],
+      "@poker/analysis": ["packages/analysis/src/index.ts"],
+      "@poker/persistence": ["packages/persistence/src/index.ts"]
+    }
+  },
+  "include": ["apps", "packages", "tests", "tools/benchmarks", "vite.config.ts"]
+}

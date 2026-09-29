@@ -1,0 +1,88 @@
+diff --git a/dist/chunk-ENZA3NKL.js b/dist/chunk-ENZA3NKL.js
+index 0e9a96e15a25fb5e2d01d1e28519c5f6d27fe74d..7f08bcd40f41fa755f34b1c7e7ca9fbc7fd5b444 100644
+--- a/dist/chunk-ENZA3NKL.js
++++ b/dist/chunk-ENZA3NKL.js
+@@ -8,7 +8,7 @@ function findSeatByPlayerId(seating, playerId) {
+   return void 0;
+ }
+ function calculateRoundContributions(round) {
+-  const result = /* @__PURE__ */ new Map();
++  const result = new Map(Object.entries(round.openingContributions ?? {}));
+   for (const turn of round.turns) {
+     const previous = result.get(turn.actor) ?? 0;
+     result.set(turn.actor, previous + turn.contribution);
+@@ -84,7 +84,7 @@ function deriveTurnOrderActors(round, seating) {
+ // src/core/intent/round-context.ts
+ function deriveRoundComputation(round) {
+   const contributions = calculateRoundContributions(round);
+-  const metrics = analyzeTurns(round.turns);
++  const metrics = analyzeTurns(round.turns, round.openingContributions ?? {});
+   const highestContribution = Math.max(
+     round.highestBet,
+     metrics.highestContribution
+@@ -98,10 +98,10 @@ function deriveRoundComputation(round) {
+     lastActedHighestContribution: metrics.lastActedHighestContribution
+   };
+ }
+-function analyzeTurns(turns) {
++function analyzeTurns(turns, openingContributions) {
+   let runningRaiseSize = 0;
+-  let highestContribution = 0;
+-  const contributions = /* @__PURE__ */ new Map();
++  let highestContribution = Math.max(0, ...Object.values(openingContributions));
++  const contributions = new Map(Object.entries(openingContributions));
+   const lastActedHighestContribution = /* @__PURE__ */ new Map();
+   let raisesThisRound = 0;
+   for (const turn of turns) {
+diff --git a/dist/chunk-G7UTOEPN.js b/dist/chunk-G7UTOEPN.js
+index f017a967f3342557b6e32dc20a8e7ce5db943318..0f728d2967ab8d7a934ff75c6bbfb15073f13ab2 100644
+--- a/dist/chunk-G7UTOEPN.js
++++ b/dist/chunk-G7UTOEPN.js
+@@ -1496,6 +1496,7 @@ function createInitialBettingRound(hand, seats, pots) {
+     stage: hand.stage,
+     turnOrder,
+     turns: [],
++    openingContributions: { ...pots.main.contributions },
+     roundPot,
+     highestBet
+   };
+diff --git a/dist/chunk-THHXHHCW.js b/dist/chunk-THHXHHCW.js
+index 32f851634b13da36531e5b4e21f873681a24be7c..f0834db817d89742ab65aff9e75459e149d6f6df 100644
+--- a/dist/chunk-THHXHHCW.js
++++ b/dist/chunk-THHXHHCW.js
+@@ -3131,33 +3131,10 @@ function resolvePostedBlindAmount(snapshot, actor) {
+   return 0;
+ }
+ function normalizeCallOptionForDisplay(option, postedAmount) {
+-  if (!isCallOption(option) || postedAmount <= 0) {
+-    return option;
+-  }
+-  const adjusted = Math.max(0, option.amount - postedAmount);
+-  if (adjusted === option.amount) {
+-    return option;
+-  }
+-  return { ...option, amount: adjusted };
++  return option;
+ }
+ function normalizeCallOptionForApi(option, snapshot, actor) {
+-  if (!isCallOption(option)) {
+-    return option;
+-  }
+-  const currentRound = findCurrentBettingRound(snapshot);
+-  const highestBet = currentRound?.highestBet ?? 0;
+-  if (highestBet > 0 && option.amount >= highestBet) {
+-    return option;
+-  }
+-  const posted = resolvePostedBlindAmount(snapshot, actor);
+-  if (posted <= 0) {
+-    return option;
+-  }
+-  const adjusted = option.amount + posted;
+-  if (adjusted === option.amount) {
+-    return option;
+-  }
+-  return { ...option, amount: adjusted };
++  return option;
+ }
+ 
+ // src/simulation/random-state-defaults.ts

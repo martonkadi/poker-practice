@@ -1,0 +1,1 @@
+{ "name": "@poker/poker", "version": "0.1.0", "private": true, "type": "module", "exports": "./src/index.ts", "dependencies": { "@poker/contracts": "workspace:*", "poker-engine-ts": "0.1.3" } }
