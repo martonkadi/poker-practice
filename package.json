@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "test:rules": "vitest run --config vitest.config.ts packages/poker",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
+    "test:e2e:release": "playwright test",
     "test:db": "node tools/test-db.mjs",
     "benchmark": "node --import tsx tools/benchmarks/run.ts",
     "check": "node tools/run-check.mjs"

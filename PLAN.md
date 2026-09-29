@@ -1,6 +1,6 @@
 # Poker Practice implementation plan
 
-Status: `in_progress` (updated 2026-09-29). Current milestone: M1/M4 local verification. Next task: add full multiway replay and release browser coverage, then audit cloud tests when a database becomes available. Local Supabase validation is blocked by unavailable Docker; provider account access will follow after the user connects it. This document is the implementation source of truth.
+Status: `in_progress` (updated 2026-09-29). Current milestone: M1/M4 local verification. Next task: add full multiway replay and measured browser bot latency, then audit cloud tests when a database becomes available. Local Supabase validation is blocked by unavailable Docker; provider account access will follow after the user connects it. This document is the implementation source of truth.
 
 ## Objective
 
@@ -20,7 +20,7 @@ Statuses are `not_started`, `in_progress`, `blocked`, and `complete`. Mark a mil
 | M3 Play | in_progress | Heads-up UI, recovery, Web Locks, keyboard completion, two-tab ownership and 100 automated hands pass; manual smoke remains. Depends on M2. |
 | M4 Review | in_progress | Local history, review, stats, immutable hand records, offline bookmark queue and import/export implemented; broader persistence and hindsight tests remain. Depends on M3. |
 | M5 Cloud | blocked | OAuth wiring, migration, RPC and deletion code exist; local/real backend security and cross-device tests cannot run without Docker or provider access. Depends on M4. |
-| M6 Quality | in_progress | Chromium desktop/mobile and keyboard/two-tab checks pass; Firefox/WebKit and measured latency remain. Depends on M5. |
+| M6 Quality | in_progress | Chromium, Firefox and WebKit desktop/mobile, keyboard and two-tab checks pass; measured latency remains. Depends on M5. |
 | M7 Deployment | blocked | Workflow and Wrangler dry-run exist; provider credentials/production verification unavailable. Depends on M6. |
 | M8 Handoff | not_started | Release tag, all gate evidence, actual URLs and final operating handoff. Depends on M7. |
 
@@ -58,7 +58,7 @@ External access: no GitHub credential or signed-in browser session is available;
 
 ## Evidence and PRs
 
-No PRs or remote CI results exist yet. Local commands, results and actual screenshots are in `docs/acceptance.md` and `docs/screenshots/`. Do not invent release evidence.
+Local commit `fe6f457` records the first local implementation. No PRs or remote CI results exist yet. Local commands, results and actual screenshots are in `docs/acceptance.md` and `docs/screenshots/`. Do not invent release evidence.
 
 ## Later roadmap
 

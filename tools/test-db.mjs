@@ -50,6 +50,12 @@ try {
   assert(!!tooEarly.error, 'Out-of-order upload was accepted');
   const upload = await a.client.rpc('sync_session_batch', { p_session_id: sessionId, p_hands: [first], p_device_id: device });
   assert(!upload.error && upload.data.acknowledged_sequence === 0, `upload failed: ${upload.error?.message}`);
+  const bookmark = await a.client.from('bookmarks').insert({ user_id: a.id, hand_id: first.id });
+  assert(!bookmark.error, `Owner bookmark failed: ${bookmark.error?.message}`);
+  const foreignBookmark = await b.client.from('bookmarks').insert({ user_id: b.id, hand_id: first.id });
+  assert(!!foreignBookmark.error, 'Another user bookmarked a private hand');
+  const invisibleBookmark = await b.client.from('bookmarks').select('hand_id');
+  assert(!invisibleBookmark.error && invisibleBookmark.data.length === 0, 'Another user read a private bookmark');
   const retry = await a.client.rpc('sync_session_batch', { p_session_id: sessionId, p_hands: [first], p_device_id: device });
   assert(!retry.error && retry.data.acknowledged_sequence === 0, 'Idempotent retry failed');
   const conflict = await a.client.rpc('sync_session_batch', { p_session_id: sessionId, p_hands: [{ ...first, heroNet: 999 }], p_device_id: device });
@@ -61,6 +67,10 @@ try {
   assert(!anonymousRead.error && anonymousRead.data.length === 0, 'Anonymous client read private hand');
   const foreignWrite = await b.client.from('hands').insert({ id: crypto.randomUUID(), user_id: a.id, session_id: sessionId, sequence: 9, completed_at: new Date().toISOString(), byte_count: 1, record: {} });
   assert(!!foreignWrite.error, 'Direct client write bypassed sync');
+  const directUpdate = await a.client.from('hands').update({ record: { heroNet: 999 } }).eq('id', first.id);
+  assert(!!directUpdate.error, 'Owner direct update bypassed immutable records');
+  const anonymousRpc = await anonymous.rpc('sync_session_batch', { p_session_id: sessionId, p_hands: [first], p_device_id: device });
+  assert(!!anonymousRpc.error, 'Anonymous client synchronized a hand');
   const foreignRpc = await b.client.rpc('sync_session_batch', { p_session_id: sessionId, p_hands: [record(sessionId, sessionStartedAt, 1)], p_device_id: device });
   assert(!!foreignRpc.error, 'Another user synchronized the session');
   const stats = await a.client.from('stat_totals').select('hands,net_chips').eq('difficulty', 'standard').single();
@@ -71,6 +81,13 @@ try {
   assert(!more.error, `Retention upload failed: ${more.error?.message}`);
   const retained = await a.client.from('hands').select('id');
   assert(!retained.error && retained.data.length === 2, 'Retention did not prune to two hands');
+  const prunedBookmark = await a.client.from('bookmarks').select('hand_id').eq('hand_id', first.id);
+  assert(!prunedBookmark.error && prunedBookmark.data.length === 0, 'Bookmark survived pruning of its hand');
+  const removed = await admin.auth.admin.deleteUser(a.id);
+  assert(!removed.error, `Account deletion fixture failed: ${removed.error?.message}`);
+  users.splice(users.indexOf(a.id), 1);
+  const remaining = await admin.from('hands').select('id', { count: 'exact', head: true }).eq('user_id', a.id);
+  assert(!remaining.error && remaining.count === 0, 'Cloud hands survived account deletion');
   console.log('Database authorization, ordering, retry, conflict, aggregate and pruning checks passed.');
 } finally {
   await admin.from('service_controls').update({ max_hands: 500, require_google: true }).eq('singleton', true);

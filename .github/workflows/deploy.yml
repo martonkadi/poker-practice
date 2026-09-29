@@ -35,6 +35,8 @@ jobs:
       - name: Confirm configured free providers
         run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID" && test -n "$SUPABASE_ACCESS_TOKEN" && test -n "$SUPABASE_PROJECT_REF" && test -n "$SUPABASE_DB_PASSWORD" && test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
       - run: pnpm check
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - run: pnpm test:e2e:release
       - run: pnpm exec supabase link --project-ref "$SUPABASE_PROJECT_REF"
       - run: pnpm exec supabase db push --linked
       - run: pnpm exec supabase functions deploy delete-account --project-ref "$SUPABASE_PROJECT_REF"

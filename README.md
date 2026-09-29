@@ -59,6 +59,7 @@ Google’s client secret goes only into Supabase’s provider settings. The serv
 | `pnpm test` | Unit and integration tests, including 100 automated hands |
 | `pnpm test:rules` | Engine adapter regression fixtures |
 | `pnpm test:e2e` | Chromium guest browser tests; run `pnpm exec playwright install chromium` once |
+| `pnpm test:e2e:release` | Sequential Chromium, Firefox and WebKit browser suite; install all three Playwright browsers first |
 | `pnpm test:db` | Local Supabase authorization/sync tests after `supabase start` and `db reset` |
 | `pnpm benchmark` | 10,000 paired deals per opponent with full policy sampling; long-running |
 | `pnpm check` | Lint, typecheck, unit/integration tests, build |
