@@ -19,6 +19,7 @@
     "test:e2e:release": "playwright test",
     "test:db": "node tools/test-db.mjs",
     "benchmark": "node --import tsx tools/benchmarks/run.ts",
+    "benchmark:browser": "node tools/benchmarks/browser-latency.mjs",
     "check": "node tools/run-check.mjs"
   },
   "devDependencies": {

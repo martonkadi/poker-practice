@@ -62,6 +62,7 @@ Google’s client secret goes only into Supabase’s provider settings. The serv
 | `pnpm test:e2e:release` | Sequential Chromium, Firefox and WebKit browser suite; install all three Playwright browsers first |
 | `pnpm test:db` | Local Supabase authorization/sync tests after `supabase start` and `db reset` |
 | `pnpm benchmark` | 10,000 paired deals per opponent with full policy sampling; long-running |
+| `pnpm benchmark:browser` | 30 preflop Web Worker round trips per policy in local Chromium; reports machine and p95 latency |
 | `pnpm check` | Lint, typecheck, unit/integration tests, build |
 
 For a quick harness smoke test, run `pnpm benchmark --deals 5 --samples-standard 16 --samples-easy 16`. Its output is **not** strength evidence. The full benchmark must run separately before ordered difficulty claims are published.
