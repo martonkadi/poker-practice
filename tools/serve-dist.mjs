@@ -12,7 +12,13 @@
 // This file defines no security header values of its own. `dist/_headers` is
 // the only source of those values (Req 8.4).
 //
-// Usage: node tools/serve-dist.mjs [--port 4173] [--host 127.0.0.1] [--dir dist]
+// `--unrouted-ms <n>` emulates the window right after `wrangler deploy` returns
+// in which Cloudflare's edge does not route the hostname to the new Worker yet:
+// for the first <n> ms every request gets a bare 404 without the app shell or
+// any `_headers` values. Observed on the first deploy of 9d15c68 (2026-10-01);
+// the live smoke check must wait this out instead of failing. Default 0 (off).
+//
+// Usage: node tools/serve-dist.mjs [--port 4173] [--host 127.0.0.1] [--dir dist] [--unrouted-ms 0]
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
@@ -135,11 +141,16 @@ export async function resolveAsset(root, pathname) {
   return null;
 }
 
-export function createDistServer({ root, rules }) {
+export function createDistServer({ root, rules, unroutedMs = 0 }) {
   const resolvedRoot = path.resolve(root);
   const fallback = path.join(resolvedRoot, 'index.html');
+  const routedAt = Date.now() + unroutedMs;
   return createServer(async (request, response) => {
     try {
+      if (Date.now() < routedAt) {
+        response.writeHead(404, { 'Content-Type': MIME_TYPES['.txt'] }).end('Not found: hostname not routed yet\n');
+        return;
+      }
       const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
       let pathname;
       try {
@@ -169,23 +180,27 @@ export function createDistServer({ root, rules }) {
 }
 
 function parseArgs(argv) {
-  const options = { port: 4173, host: '127.0.0.1', dir: fileURLToPath(new URL('../dist/', import.meta.url)) };
+  const options = { port: 4173, host: '127.0.0.1', dir: fileURLToPath(new URL('../dist/', import.meta.url)), unroutedMs: 0 };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     const value = argv[i + 1];
     if (flag === '--port' && value) { options.port = Number(value); i += 1; }
     else if (flag === '--host' && value) { options.host = value; i += 1; }
     else if (flag === '--dir' && value) { options.dir = path.resolve(value); i += 1; }
+    else if (flag === '--unrouted-ms' && value) { options.unroutedMs = Number(value); i += 1; }
     else throw new Error(`Unknown or incomplete argument: ${flag}`);
   }
   if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) {
     throw new Error(`Invalid --port: ${options.port}`);
   }
+  if (!Number.isInteger(options.unroutedMs) || options.unroutedMs < 0) {
+    throw new Error(`Invalid --unrouted-ms: ${options.unroutedMs}`);
+  }
   return options;
 }
 
 function main() {
-  const { port, host, dir } = parseArgs(process.argv.slice(2));
+  const { port, host, dir, unroutedMs } = parseArgs(process.argv.slice(2));
   const headersPath = path.join(dir, '_headers');
   if (!existsSync(path.join(dir, 'index.html'))) {
     console.error(`serve-dist: ${path.join(dir, 'index.html')} not found. Run "pnpm build" first.`);
@@ -196,9 +211,10 @@ function main() {
     process.exit(1);
   }
   const rules = parseHeadersFile(readFileSync(headersPath, 'utf8'));
-  const server = createDistServer({ root: dir, rules });
+  const server = createDistServer({ root: dir, rules, unroutedMs });
   server.listen(port, host, () => {
-    console.log(`serve-dist: serving ${dir} at http://${host}:${port} with ${rules.length} _headers rule(s)`);
+    const unrouted = unroutedMs > 0 ? `, answering 404 for the first ${unroutedMs} ms` : '';
+    console.log(`serve-dist: serving ${dir} at http://${host}:${port} with ${rules.length} _headers rule(s)${unrouted}`);
   });
   const stop = () => server.close(() => process.exit(0));
   process.on('SIGINT', stop);

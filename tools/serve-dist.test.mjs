@@ -65,3 +65,25 @@ test('serves files, SPA fallback, headers and blocks traversal', async (t) => {
     assert.equal(await response.text(), '<!doctype html><title>app</title>', route);
   }
 });
+
+test('--unrouted-ms answers a bare 404 without _headers values until the window ends', async (t) => {
+  const base = await mkdtemp(path.join(tmpdir(), 'serve-dist-'));
+  const root = path.join(base, 'dist');
+  await mkdir(root, { recursive: true });
+  await writeFile(path.join(root, 'index.html'), '<!doctype html><title>app</title>');
+  const server = createDistServer({ root, rules: parseHeadersFile('/*\n  X-Test: on\n'), unroutedMs: 400 });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(async () => { await new Promise((resolve) => server.close(resolve)); await rm(base, { recursive: true, force: true }); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  const early = await fetch(`${origin}/`);
+  assert.equal(early.status, 404);
+  assert.equal(early.headers.get('x-test'), null);
+  assert.doesNotMatch(await early.text(), /<title>app<\/title>/);
+
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  const late = await fetch(`${origin}/`);
+  assert.equal(late.status, 200);
+  assert.equal(late.headers.get('x-test'), 'on');
+  assert.equal(await late.text(), '<!doctype html><title>app</title>');
+});

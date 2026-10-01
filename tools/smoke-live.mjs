@@ -1,16 +1,22 @@
 #!/usr/bin/env node
 // Live smoke check for a deployed site (Req 12).
 //
-// 1. Fetches each SMOKE_PATHS entry directly with a 10 s timeout: HTTP 200, HTML, a
+// 1. Waits for the deployment: in a Chromium context of its own, polls /about for up to
+//    90 s until the build commit matches --commit (Req 12.4). Right after `wrangler deploy`
+//    returns, Cloudflare's edge can still answer with a bare 404 that is not the app (seen
+//    on the first deploy of 9d15c68) or with the previous version. Responses seen while
+//    waiting are therefore not header-checked; the checks below run afterwards, against
+//    the deployment that shows the expected commit. Request origins are still recorded.
+// 2. Fetches each SMOKE_PATHS entry directly, once, with a 10 s timeout: HTTP 200, HTML, a
 //    same-origin entry module script, the Requirement 8 CSP, nosniff and no-referrer.
-// 2. In a fresh Chromium context (no saved app data), records every request and response:
+// 3. In a fresh Chromium context (no saved app data), records every request and response:
 //    - fails on any request to a foreign origin (Req 12.3);
 //    - fails on any same-origin response without nosniff/no-referrer, or an HTML
 //      response without the CSP (Req 12.5);
-//    - polls /about for up to 90 s until the build commit matches --commit (Req 12.4);
+//    - loads /about once and confirms the build commit again (Req 12.4);
 //    - plays one hand with check/call within 120 s, opens its review and confirms the
 //      first History row is that hand with the same result (Req 12.2).
-// 3. Prints one PASS/FAIL line per step with URL, expected and observed values and exits
+// 4. Prints one PASS/FAIL line per step with URL, expected and observed values and exits
 //    0 only if every step passed (Req 12.6, 12.7).
 //
 // Usage: pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit <sha>
@@ -67,27 +73,65 @@ async function fetchStep(origin, pathname) {
   }
 }
 
-/** Polls /about until the displayed build commit matches (Req 12.4). */
-async function aboutStep(page, origin, commit) {
-  const url = new URL('/about', `${origin}/`).href;
-  const expected = `build commit ${commit} or a prefix of it with at least ${MIN_COMMIT_PREFIX} characters (within ${COMMIT_POLL_TIMEOUT_MS / 1000} s)`;
-  const deadline = Date.now() + COMMIT_POLL_TIMEOUT_MS;
+/**
+ * Loads /about once and reads the displayed build commit.
+ * @returns {Promise<{ shown: string | null, observed: string }>}
+ */
+async function readAboutCommit(page, url, timeoutMs) {
+  const response = await page.goto(url, { waitUntil: 'load', timeout: Math.max(1_000, timeoutMs) });
+  const status = response?.status() ?? 0;
+  // A non-200 answer is not the app shell: do not wait for text that cannot appear.
+  if (status !== 200) return { shown: null, observed: `HTTP ${status} for /about` };
+  const line = page.getByText(/Build commit:/);
+  await line.first().waitFor({ state: 'visible', timeout: Math.max(1_000, Math.min(UI_STEP_TIMEOUT_MS, timeoutMs)) });
+  const shown = parseBuildCommit(await line.first().innerText());
+  return { shown, observed: shown === null ? 'no build commit value shown' : `build commit ${shown}` };
+}
+
+/**
+ * Polls /about until the displayed build commit matches, i.e. until the edge serves the
+ * expected deployment (Req 12.4).
+ * @returns {Promise<{ pass: boolean, observed: string, seconds: string }>}
+ */
+async function waitForCommit(page, url, commit) {
+  const started = Date.now();
+  const deadline = started + COMMIT_POLL_TIMEOUT_MS;
+  const seconds = () => ((Date.now() - started) / 1000).toFixed(1);
   let observed = 'About page not loaded';
   for (;;) {
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: Math.max(1_000, deadline - Date.now()) });
-      const line = page.getByText(/Build commit:/);
-      await line.first().waitFor({ state: 'visible', timeout: Math.max(1_000, Math.min(UI_STEP_TIMEOUT_MS, deadline - Date.now())) });
-      const shown = parseBuildCommit(await line.first().innerText());
-      observed = shown === null ? 'no build commit value shown' : `build commit ${shown}`;
-      if (commitMatches(shown, commit)) return { step: 'about commit', url, expected, observed, pass: true };
+      const result = await readAboutCommit(page, url, deadline - Date.now());
+      observed = result.observed;
+      if (commitMatches(result.shown, commit)) return { pass: true, observed, seconds: seconds() };
     } catch (error) {
       observed = `About page error: ${message(error)}`;
     }
     if (Date.now() + COMMIT_POLL_INTERVAL_MS >= deadline) break;
     await page.waitForTimeout(COMMIT_POLL_INTERVAL_MS);
   }
-  return { step: 'about commit', url, expected, observed: `${observed} after ${COMMIT_POLL_TIMEOUT_MS / 1000} s`, pass: false };
+  return { pass: false, observed: `${observed} after ${COMMIT_POLL_TIMEOUT_MS / 1000} s`, seconds: seconds() };
+}
+
+/** The "about commit" step: the wait result plus one confirming load in the checked context. */
+async function aboutStep(page, origin, commit, wait) {
+  const url = new URL('/about', `${origin}/`).href;
+  const expected = `build commit ${commit} or a prefix of it with at least ${MIN_COMMIT_PREFIX} characters (within ${COMMIT_POLL_TIMEOUT_MS / 1000} s)`;
+  if (!wait.pass) return { step: 'about commit', url, expected, observed: wait.observed, pass: false };
+  try {
+    const { shown, observed } = await readAboutCommit(page, url, UI_STEP_TIMEOUT_MS);
+    const pass = commitMatches(shown, commit);
+    return {
+      step: 'about commit',
+      url,
+      expected,
+      observed: pass
+        ? `${observed} (served after ${wait.seconds} s; confirmed in a fresh profile)`
+        : `${wait.observed} after ${wait.seconds} s, then ${observed} in a fresh profile`,
+      pass
+    };
+  } catch (error) {
+    return { step: 'about commit', url, expected, observed: `About page error in a fresh profile: ${message(error)}`, pass: false };
+  }
 }
 
 /** Plays one hand with check/call until it completes (Req 12.2). */
@@ -154,17 +198,30 @@ async function reviewHistoryStep(page, origin, reviewHref) {
   }
 }
 
-/** Step 2: everything that runs in Chromium. */
-async function browserSteps(origin, commit) {
+/**
+ * Step 1: waits in its own Chromium context until /about shows the expected commit.
+ * Request origins are recorded into `requested`; response headers are not checked here.
+ */
+async function waitForDeployment(browser, origin, commit, requested) {
+  const url = new URL('/about', `${origin}/`).href;
+  const context = await browser.newContext();
+  try {
+    context.on('request', (request) => requested.push(request.url()));
+    return await waitForCommit(await context.newPage(), url, commit);
+  } catch (error) {
+    return { pass: false, observed: `About page error: ${message(error)}`, seconds: '0.0' };
+  } finally {
+    await context.close().catch(() => {});
+  }
+}
+
+/** Step 3: the checked browser session in a fresh context. */
+async function browserSteps(browser, origin, commit, wait, requested) {
   const results = [];
-  const requested = [];
   const headerFailures = [];
   const pendingHeaders = [];
   let checkedResponses = 0;
-  let browser;
   try {
-    const { chromium } = await import('@playwright/test');
-    browser = await chromium.launch();
     const context = await browser.newContext();
     context.on('request', (request) => requested.push(request.url()));
     context.on('response', (response) => {
@@ -181,7 +238,7 @@ async function browserSteps(origin, commit) {
     });
     const page = await context.newPage();
 
-    results.push(await aboutStep(page, origin, commit));
+    results.push(await aboutStep(page, origin, commit, wait));
     const { result, reviewHref } = await playStep(page, origin);
     results.push(result);
     if (reviewHref) results.push(await reviewHistoryStep(page, origin, reviewHref));
@@ -191,10 +248,15 @@ async function browserSteps(origin, commit) {
     await context.close();
   } catch (error) {
     results.push({ step: 'browser', url: origin, expected: 'Chromium runs the browser steps', observed: message(error), pass: false });
-  } finally {
-    await browser?.close().catch(() => {});
   }
 
+  results.push(...originAndHeaderResults(origin, requested, headerFailures, checkedResponses));
+  return results;
+}
+
+/** The two whole-run browser results: request origins (Req 12.3) and response headers (Req 12.5). */
+function originAndHeaderResults(origin, requested, headerFailures, checkedResponses) {
+  const results = [];
   const foreign = foreignOrigins(requested, origin);
   results.push({
     step: 'browser request origins',
@@ -229,8 +291,30 @@ async function main() {
   const results = [];
   const report = (result) => { results.push(result); console.log(formatResult(result)); };
 
-  for (const pathname of SMOKE_PATHS) report(await fetchStep(origin, pathname));
-  for (const result of await browserSteps(origin, commit)) report(result);
+  const requested = [];
+  let browser;
+  try {
+    const { chromium } = await import('@playwright/test');
+    browser = await chromium.launch();
+  } catch (error) {
+    report({ step: 'browser', url: origin, expected: 'Chromium runs the browser steps', observed: message(error), pass: false });
+  }
+  try {
+    // Step 1: wait until the edge serves the expected build (no checks recorded yet).
+    const wait = browser
+      ? await waitForDeployment(browser, origin, commit, requested)
+      : { pass: false, observed: 'Chromium unavailable', seconds: '0.0' };
+    console.log(`smoke:live: ${wait.pass ? `expected build served after ${wait.seconds} s` : `expected build not confirmed (${wait.observed})`}`);
+    // Step 2: strict, single direct requests.
+    for (const pathname of SMOKE_PATHS) report(await fetchStep(origin, pathname));
+    // Step 3: strict browser session.
+    const browserResults = browser
+      ? await browserSteps(browser, origin, commit, wait, requested)
+      : originAndHeaderResults(origin, requested, [], 0);
+    for (const result of browserResults) report(result);
+  } finally {
+    await browser?.close().catch(() => {});
+  }
 
   const failed = results.filter((r) => !r.pass).length;
   console.log(failed === 0
