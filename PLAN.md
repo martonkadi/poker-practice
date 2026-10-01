@@ -1,6 +1,6 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered (no Candidate_Commit, deployment, live smoke or prerelease yet).
+Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` passed the local Release_Checks on 2026-10-01; PokerKit reference, deployment, live smoke and prerelease are not run yet.
 
 ## Goal and deadline
 
@@ -33,41 +33,43 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 
 - Status: in progress (2026-10-01)
 - Gate: guest-only app/deployment path, one opponent, inactive promises removed, no Supabase build dependency.
-- Commit: none; evidence is from the uncommitted working tree on `release/guest-mvp` (parent `da3ed2fc292ed0d874522e80aa99b0c9ef47de2f`).
-- Evidence:
-  - lint: pass (working tree)
-  - typecheck: pass (working tree)
-  - production build: pass (working tree)
-  - check:dist: pass (working tree; entry chunk 467,506 bytes ≤ 500,000)
+- Commit: `911e9e90d398e4b8a7f290423434e05edea973ff` (Candidate_Commit on `release/guest-mvp`).
+- Evidence (2026-10-01, clean tree at the Candidate_Commit, see [Candidate_Commit Release_Checks](#candidate_commit-release_checks)):
+  - lint: pass
+  - typecheck: pass
+  - production build: pass
+  - check:dist: pass (entry chunk 467,529 bytes ≤ 500,000)
   - Deploy_Workflow run: not run (see Blocked gates)
 
 ### MVP-2 Reliable play/storage
 
 - Status: in progress (2026-10-01)
 - Gate: betting/showdown and three-hand browser journeys; synchronous action guard; tab takeover reload; cancellation/retry; correct saved actions/session continuity.
-- Commit: none; uncommitted working tree on `release/guest-mvp`.
-- Evidence:
-  - Vitest including rules fixtures (`packages/poker`): pass, 21 files / 75 tests (working tree)
-  - three-browser suite (`pnpm test:e2e:release`, retries 0): pass, 105/105 (Chromium 35, Firefox 35, WebKit 35) (working tree)
+- Commit: `911e9e90d398e4b8a7f290423434e05edea973ff` (Candidate_Commit).
+- Evidence (2026-10-01, Candidate_Commit):
+  - Vitest: pass, 21 files / 75 passed / 0 failed
+  - rules fixtures (`pnpm test:rules`, `packages/poker`): pass, 4 files / 30 passed / 0 failed (incl. `rules-fixtures.test.ts` 8/8)
+  - three-browser suite (`pnpm test:e2e:release`, retries 0): pass, 105 passed / 0 failed (Chromium 35, Firefox 35, WebKit 35)
   - PokerKit reference (`tools/reference/pokerkit_rules.py`): not run
 
 ### MVP-3 Review and data
 
 - Status: in progress (2026-10-01)
 - Gate: saved visible state/pot odds, missing/error states, history/export/deletion, current screenshots/copy.
-- Commit: none; uncommitted working tree on `release/guest-mvp`.
-- Evidence:
-  - Vitest: pass, 21 files / 75 tests (working tree)
-  - three-browser suite (review, missing review, export, deletion, keyboard, 390px): pass, 105/105 (working tree)
+- Commit: `911e9e90d398e4b8a7f290423434e05edea973ff` (Candidate_Commit).
+- Evidence (2026-10-01, Candidate_Commit):
+  - Vitest: pass, 75 passed / 0 failed
+  - three-browser suite (review, missing review, export, deletion, keyboard, 390px): pass, 105 passed / 0 failed
   - replacement screenshots from the Candidate_Commit `dist`: not run
 
 ### MVP-4 Publish and verify
 
-- Status: not started (2026-10-01)
+- Status: in progress (2026-10-01)
 - Gate: candidate checks, real Cloudflare URL, built/live routes and guest smoke, tested commit/tag/limitations recorded.
-- Commit: none; no Candidate_Commit exists yet.
+- Commit: `911e9e90d398e4b8a7f290423434e05edea973ff` (Candidate_Commit).
 - Evidence:
-  - Release_Checks on a clean Candidate_Commit: not run
+  - local Release_Checks on the clean Candidate_Commit: pass (2026-10-01; lint, typecheck, Vitest, test:tools, rules fixtures, build, check:dist, three-browser suite)
+  - PokerKit reference on the Candidate_Commit: not run
   - Deploy_Workflow on the Candidate_Commit: not run (open Blocked gates for GitHub CLI, Cloudflare secrets and `production` environment)
   - live smoke (`pnpm smoke:live`): not run
   - `v0.1.0-rc.1` prerelease: not run
@@ -81,9 +83,27 @@ A check counts as passed only when it exits 0 with zero failed tests and retries
 
 Smoke the live URL and direct routes. Verify no auth/cloud calls or privileged credentials. Existing hidden-card isolation and conservation remain mandatory. The full strength benchmark is deferred, not passed.
 
-### Evidence commit rule (pending Owner confirmation)
+### Candidate_Commit Release_Checks
 
-Commits that touch only `PLAN.md`, `docs/screenshots/*` or the Delivery_Report are evidence commits. They may land after the Candidate_Commit passes, and they are never deployed or tagged. Screenshots are captured from the Candidate_Commit's `dist` before the evidence commit. If the Owner rejects this rule, every such change creates a new Candidate_Commit and all Release_Checks must be rerun on it (Req 10.9).
+Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` on `release/guest-mvp`, run locally on 2026-10-01 (Windows, Node 24.20.0, pnpm 12.6.0) from a clean `git status`. Build env matched `deploy.yml`: `VITE_SUPABASE_URL=''`, `VITE_SUPABASE_PUBLISHABLE_KEY=''`, `VITE_APP_ENV=production`, `VITE_GIT_COMMIT=<Candidate SHA>` (the SHA is embedded in the entry chunk). `pnpm check` exited 0; the browser suite then ran against that same `dist` with no rebuild and retries 0. The tree was still clean afterwards.
+
+| Check | Command | Result | Passed | Failed |
+| --- | --- | --- | --- | --- |
+| lint | `pnpm lint` (in `pnpm check`) | pass | n/a | 0 errors |
+| typecheck | `pnpm typecheck` (in `pnpm check`) | pass | n/a | 0 errors |
+| Vitest (unit/integration, property and rules tests) | `pnpm test` (in `pnpm check`) | pass | 75 (21 files) | 0 |
+| tool tests | `pnpm test:tools` (in `pnpm check`) | pass | 29 | 0 |
+| rules fixtures | `pnpm test:rules` (`packages/poker`) | pass | 30 (4 files; `rules-fixtures.test.ts` 8) | 0 |
+| production build | `pnpm build` (in `pnpm check`) | pass | n/a | n/a |
+| check:dist | `pnpm check:dist` (in `pnpm check`) | pass (entry-size, cloud-code, test-hook, inline-markup, headers) | n/a | n/a |
+| three-browser suite | `pnpm test:e2e:release` (retries 0) | pass | 105 (Chromium 35, Firefox 35, WebKit 35) | 0 |
+| PokerKit reference | `python tools/reference/pokerkit_rules.py` | not run | | |
+
+Entry chunk: `/assets/index-B-oJAD1B.js`, 467,529 bytes (limit 500,000).
+
+### Evidence commit rule (confirmed by the Owner 2026-10-01)
+
+Commits that touch only `PLAN.md`, `docs/screenshots/*` or the Delivery_Report are evidence commits. They may land after the Candidate_Commit passes, and they are never deployed or tagged. Screenshots are captured from the Candidate_Commit's `dist` before the evidence commit. Any other file change after the Release_Checks pass creates a new Candidate_Commit, and all Release_Checks must be rerun on it (Req 10.9).
 
 ## Evidence and risks
 
@@ -91,7 +111,7 @@ Baseline `4ac8b7d`: 20 unit/integration tests and TypeScript passed September 30
 
 Preservation commit `da3ed2fc292ed0d874522e80aa99b0c9ef47de2f` on `release/guest-mvp` (2026-09-30), measured on the untouched tree against the preview build before any change: Vitest 23/23 passed, Playwright Chromium 11/11 passed, no failing tests.
 
-Working-tree evidence (2026-10-01, local, uncommitted, so no SHA): `pnpm check` passed (lint, typecheck, Vitest 21 files / 75 tests, build, check:dist entry chunk 467,506 bytes ≤ 500,000); `pnpm test:e2e:release` passed 105/105 (Chromium 35, Firefox 35, WebKit 35), retries 0. These results must be rerun on the clean Candidate_Commit before they count as Release_Checks.
+Working-tree evidence (2026-10-01, local, uncommitted, so no SHA): `pnpm check` passed (lint, typecheck, Vitest 21 files / 75 tests, build, check:dist entry chunk 467,506 bytes ≤ 500,000); `pnpm test:e2e:release` passed 105/105 (Chromium 35, Firefox 35, WebKit 35), retries 0. Superseded by the [Candidate_Commit Release_Checks](#candidate_commit-release_checks) on `911e9e90d398e4b8a7f290423434e05edea973ff`.
 
 MVP risks: action/tab/worker recovery, incomplete browser journeys, saved call/all-in representation, local tooling, unverified Cloudflare access. Supabase IPv6/OAuth issues are deferred cloud blockers. Browser data can be lost on storage clearing; export and honest copy are required. Localhost does not count as a delivered web MVP.
 
@@ -100,7 +120,8 @@ MVP risks: action/tab/worker recovery, incomplete browser journeys, saved call/a
 - September 30: owner prioritizes this week's MVP and allows revising prior decisions.
 - September 30: owner approves a public link, one experimental bot, local hands/review; accounts and cross-device sync deferred.
 - Preserve useful implementation; reduce scope rather than rewrite. Archive prior gates without claiming completion.
-- Pending Owner confirmation: the evidence commit rule above.
+- October 1: Owner confirmed the evidence commit rule above.
+- October 1: Owner authorized running git with a per-command `-c safe.directory=C:/Users/marto/projects/poker` override (no git config file changed).
 
 ## Delivery
 
