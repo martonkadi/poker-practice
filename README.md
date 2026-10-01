@@ -2,7 +2,9 @@
 
 A desktop-focused heads-up no-limit Texas Hold’em practice site. Play 100bb hands against Easy or Standard **experimental** bots, then review decisions with pot odds and sampled equity against uniform legal opponent hands. These heuristics are not GTO-optimal and the review does not calculate EV loss. Practice chips have no cash value.
 
-**Current status (2026-09-29):** guest gameplay, local recovery/history/review/progress, import/export, and the static build pass local checks. Google OAuth, cloud sync, database security, and account deletion are implemented but have not been verified against a running Supabase project. The owner created the [private GitHub repository](https://github.com/martonkadi/poker-practice); CI and production deployment remain unverified. See [PLAN.md](PLAN.md) and [acceptance evidence](docs/acceptance.md) for exact gates.
+**Current status (audited 2026-09-29):** guest gameplay, local recovery/history/review/progress, import/export, and the static build pass the existing checks. The [private repository's CI](https://github.com/martonkadi/poker-practice/actions/runs/36590954889) also passed its local Supabase authorization/sync tests. The [first deployment attempt](https://github.com/martonkadi/poker-practice/actions/runs/36652432418) passed all 12 release browser tests, then failed on the Supabase IPv6 connection before applying migrations or publishing the function/site. Real Google sign-in, multi-hand cloud sync and deployed account deletion remain unverified; source inspection found session-continuity bugs to fix first. There is no v0.1.0 release yet.
+
+Next: fix critical session/recovery bugs and migration connectivity, deploy an unannounced public-URL test, then finish every v1 gate. Start with [roadmap.md](roadmap.md) for ordered actions and later strategy/review work, [PLAN.md](PLAN.md) for milestone status, and [acceptance evidence](docs/acceptance.md) for test scope. The intended `https://poker-practice.marton-kadi.workers.dev` address currently returns 404 and is not yet a working app.
 
 ![Actual desktop practice table](docs/screenshots/table-desktop.png)
 
@@ -19,6 +21,8 @@ pnpm dev
 ```
 
 Open the Vite URL shown in the terminal (normally `http://localhost:5173`). Guest play needs no `.env` file, Google account, or backend. Choose **Start playing**, then **Deal the first hand**. The bot runs in a browser Web Worker. Completed hands and an interrupted hand are saved in IndexedDB on this device.
+
+The clean-checkout commands work in GitHub CI. The current Windows execution shell still needs its pnpm command path/Corepack certificate trust repaired; this environment issue is tracked in roadmap task P0-04. Do not disable TLS verification to download tools.
 
 ## Local backend setup
 
@@ -77,6 +81,6 @@ The bot receives only its hole cards and public state. The review equity sampler
 
 ## Deployment and contributing
 
-The [deployment runbook](docs/deployment.md) covers Supabase, Google, Cloudflare, GitHub secrets, and rollback. The GitHub repository is intended to remain private; deploying a `workers.dev` site makes the website public. Read [PLAN.md](PLAN.md), [AGENTS.md](AGENTS.md), and the [roadmap](docs/roadmap.md) before changing implementation.
+The [deployment runbook](docs/deployment.md) covers Supabase, Google, Cloudflare, GitHub secrets, the current connectivity blocker, and rollback. The GitHub repository is private; the planned unannounced `workers.dev` test will be publicly accessible. Read [PLAN.md](PLAN.md), [AGENTS.md](AGENTS.md), and [roadmap.md](roadmap.md) before changing implementation.
 
 First-party code is [MIT licensed](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) include the patched rules engine and PokerKit reference.

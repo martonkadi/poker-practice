@@ -4,7 +4,7 @@ import { cardToText, textToCard } from '@poker/contracts';
 import type { Action, Actor, Card, LegalActionSet, PlayerObservation, PublicAction, Street, TableFrame } from '@poker/contracts';
 
 export type EngineState = SerializableSessionState;
-export const ENGINE_PATCH_VERSION = `${ENGINE_VERSION}+blind-opening-contributions-v1`;
+export const ENGINE_PATCH_VERSION = `${ENGINE_VERSION}+blind-opening-contributions-v1.adapter-2`;
 const SEATS = [{ playerId: 'hero', seatIndex: 0, stack: 10_000 }, { playerId: 'bot', seatIndex: 1, stack: 10_000 }] as const;
 const CONFIG = {
   ...DEFAULT_RANDOM_STATE_CONFIG,
@@ -84,14 +84,20 @@ export function frame(state: EngineState): TableFrame {
   return { street: street(view.handStage), board: board(state), pot: view.potTotal, stacks, commitments: commitments(state), actor, legal: actor ? legalActions(state, actor) : null };
 }
 export function history(state: EngineState): PublicAction[] {
-  return state.activeSnapshot.hand.bettingRounds.flatMap(round => round.turns.filter(x => x.actor === 'hero' || x.actor === 'bot').map(turn => ({
-    actor: turn.actor as Actor, street: street(round.stage),
-    action: eventAction(turn.action), amount: turn.contribution
-  })));
+  return state.activeSnapshot.hand.bettingRounds.flatMap(round => {
+    const opening = (round as typeof round & { openingContributions?: Partial<Record<Actor, number>> }).openingContributions;
+    const totals = { hero: opening?.hero ?? 0, bot: opening?.bot ?? 0 };
+    return round.turns.filter(x => x.actor === 'hero' || x.actor === 'bot').map(turn => {
+      const actor = turn.actor as Actor;
+      totals[actor] += turn.contribution;
+      return { actor, street: street(round.stage), action: eventAction(turn.action, totals[actor]), amount: turn.contribution };
+    });
+  });
 }
-function eventAction(action: PlayerAction): Action {
+function eventAction(action: PlayerAction, total: number): Action {
   if (action.type === 'fold' || action.type === 'check' || action.type === 'call') return { kind: action.type };
-  if (action.type === 'bet' || action.type === 'raise' || action.type === 'all-in') return { kind: 'raiseTo', amount: action.type === 'raise' ? action.to ?? action.amount : action.amount };
+  if (action.type === 'all-in' && action.from === 'call') return { kind: 'call' };
+  if (action.type === 'bet' || action.type === 'raise' || action.type === 'all-in') return { kind: 'raiseTo', amount: total };
   throw new Error(`Unexpected action in betting history: ${action.type}`);
 }
 export function observe(state: EngineState, seat: Actor): PlayerObservation {
@@ -114,17 +120,21 @@ export async function applyAction(state: EngineState, seat: Actor, action: Actio
   else if (action.kind === 'raiseTo' && Number.isSafeInteger(action.amount) && legal.allInTo === action.amount) {
     const from = state.activeSnapshot.seating.seats.find(x => x.occupant?.playerId === seat)!.stack <= (legal.call ?? 0) ? 'call' : state.activeSnapshot.hand.stage === 'preflop' || state.activeSnapshot.hand.bettingRounds.at(-1)!.highestBet > 0 ? 'raise' : 'bet';
     requested = { type: 'all-in', amount: action.amount - commit, from };
-  } else if (action.kind === 'raiseTo' && legal.raise && action.amount >= legal.raise.min && action.amount <= legal.raise.max) {
+  } else if (action.kind === 'raiseTo' && Number.isSafeInteger(action.amount) && legal.raise && action.amount >= legal.raise.min && action.amount <= legal.raise.max) {
     const type = state.activeSnapshot.hand.bettingRounds.at(-1)!.highestBet === 0 ? 'bet' : 'raise';
     requested = type === 'bet' ? { type: 'bet', amount: action.amount - commit } : { type: 'raise', amount: action.amount - commit, to: action.amount };
   } else throw new Error('Illegal action');
+  const issuedAt = Date.now();
   const manager = SessionManager.resume({ sessionId: state.id, config: state.config, runtimeContext: state.runtimeContext,
-    initialSnapshot: state.initialSnapshot, events: state.events, metrics: state.metrics, channels: state.channels });
-  const result = await manager.applyIntent({ id: crypto.randomUUID(), actor: seat, requested, origin: seat === 'hero' ? 'ui' : 'ai', issuedAt: Date.now(), expectedSnapshotVersion: manager.session.activeSnapshot.index });
+    initialSnapshot: state.initialSnapshot, events: state.events, metrics: state.metrics, channels: state.channels }, { now: () => issuedAt });
+  const result = await manager.applyIntent({ id: crypto.randomUUID(), actor: seat, requested, origin: seat === 'hero' ? 'ui' : 'ai', issuedAt, expectedSnapshotVersion: manager.session.activeSnapshot.index });
   if (result.validation.kind !== 'accepted') throw new Error(`Engine rejected action: ${result.validation.reason}`);
   return { ...state, activeSnapshot: manager.session.activeSnapshot, events: manager.eventLog, metrics: manager.session.metrics };
 }
 export function isSettled(state: EngineState): boolean { return !selectDecisionContext(state as never).actor; }
+export function handIdentity(state: EngineState): { id: string; sequence: number; button: Actor } {
+  return { id: state.activeSnapshot.hand.id, sequence: state.events.length, button: state.activeSnapshot.seating.dealerButton === 0 ? 'hero' : 'bot' };
+}
 export function result(state: EngineState): { heroNet: number; showdown: boolean; heroWonShowdown: boolean } {
   if (!isSettled(state)) throw new Error('Hand is still live');
   const heroStack = state.activeSnapshot.seating.seats.find(x => x.occupant?.playerId === 'hero')?.stack ?? 0;

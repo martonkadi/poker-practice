@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-Local machine: Windows, Node 24.20.0, pnpm 12.6.0, Chromium from Playwright 1.63.0. Date: 2026-09-29. These are development checks, not production acceptance.
+Local machine for the recorded development runs: Windows, Node 24.20.0, pnpm 12.6.0, Chromium from Playwright 1.63.0. Date: 2026-09-29. These are development checks, not production acceptance. The status audit below distinguishes historical results from checks performed during the planning turn.
 
 | Command | Result | Scope |
 | --- | --- | --- |
@@ -15,4 +15,30 @@ Local machine: Windows, Node 24.20.0, pnpm 12.6.0, Chromium from Playwright 1.63
 
 Actual interface captures from the passing Chromium flow: [table](screenshots/table-desktop.png) and [review](screenshots/review-desktop.png). The review capture waits for sampled equity and sample count.
 
-**Still required:** clean-clone GitHub CI, local Supabase migration and `pnpm test:db`, two-account/cross-device OAuth and sync, account deletion, cloud pruning and expiry, full 10,000-pair/full-sampling benchmark with confidence bounds, wider street/device latency sampling, real Cloudflare/Google production flows, and verified release tag/URLs. No PR or release evidence exists yet.
+## Remote results verified during the status audit
+
+Current main commit: `4ac8b7d2b290e287d5df0c5dbcdc9dd8dea30c6d`.
+
+| Evidence | Result | What it establishes |
+| --- | --- | --- |
+| [CI 36590954889](https://github.com/martonkadi/poker-practice/actions/runs/36590954889) | `check` and `database` passed | Clean-checkout frozen install, existing lint/type/unit/build checks, PokerKit, Chromium, local Supabase migration and `pnpm test:db`. |
+| [Deployment 36652432418](https://github.com/martonkadi/poker-practice/actions/runs/36652432418), started 2026-09-30 00:52:56 UTC (September 29 locally) | Failed at `pnpm exec supabase db push --linked` | `pnpm check`, all 12 three-browser release tests (38.6 seconds) and `supabase link` passed. Migration failed with `IPv6 is not supported on your current network`. Edge Function and Wrangler deploy steps were skipped. |
+| GitHub repository/branch/tag/PR API reads | Private; main unprotected; no tags; five open Dependabot PRs | Repository status is verified; required branch protection and final release remain unfinished. |
+| Production environment settings, checked in preceding turn | Five expected secret names and two variable names present | Public Supabase URL matches project `epivjibibkvzdvazpujv`. Presence does not prove Cloudflare credentials or OAuth configuration work. |
+| HTTP GET of `https://poker-practice.marton-kadi.workers.dev` during audit | 404, no application root | No app was reachable at the intended production address. |
+| `node --import tsx tools/benchmarks/run.ts --deals 5`, preceding turn | Completed at 2,048 Standard / 512 Easy samples; zero illegal actions | Five pairs against each of three opponents (30 hands total). Smoke only; confidence intervals do not establish ordering. No full benchmark was started. |
+
+The subsequent proposed 1,000-pair/16-sample exploratory run was declined before execution. It contributes no evidence. The planning audit did not rerun app tests or trigger another deployment.
+
+## Limits of the passing tests and source findings
+
+- The DB harness uses two local password-based fixture accounts with Google-only enrollment temporarily disabled. It tests selected owner isolation, direct-write denial, sequence/retry/conflict accounting, wrong producing device, an expired start, two-hand retention, bookmark pruning and admin deletion cascade. It does **not** verify real Google OAuth, the Edge Function deletion endpoint, atomic enrollment or the full byte/session quota matrix.
+- The release browser suite runs four guest scenarios in each browser against Vite's development server. It does **not** establish production-build correctness, signed-in multi-hand sync, recovery on every street, or complete cloud-error coverage.
+- The 100-hand bot integration run uses 16 equity samples per decision. It proves the tested legal-action/conservation behavior, not full-sampling strategy strength.
+- Source audit: `Play.startNew` creates a new `startedAt` for Next hand while preserving session ID; `start_sync_session` rejects a changed start timestamp. Difficulty changes also reuse a fixed-configuration cloud session. Reproduce and repair with application/backend regressions (`P0-01`).
+- Source audit: review resamples equity and uses `chooseAction(..., () => 0.5)`; it does not yet report reproducible policy probabilities. Completed records contain decision frames rather than complete canonical hand events. The animation-speed value has no corresponding CSS behavior.
+- Source audit: public adapter state exposes the upstream engine type and actors are still `hero`/`bot`. Numeric seat and owned settlement contracts required by v1 remain unfinished despite passing upstream multiway fixtures.
+
+These source findings are not newly executed test results. [roadmap.md](../roadmap.md) gives reproduction tasks, dependencies and completion gates.
+
+**Still required:** critical session/recovery fixes, free IPv4 migration connection, real Google/cross-device multi-hand sync and deletion, full server validation/quota/concurrency cases, owned contract/rule coverage, reproducible review and missing controls, the 10,000-pair/full-sampling benchmark, wider browser latency/quality checks, production-build/live verification, and final release tag/report. No v0.1.0 release exists.

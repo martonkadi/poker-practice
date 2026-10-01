@@ -9,5 +9,5 @@ export default defineConfig({
     '@poker/analysis': fileURLToPath(new URL('./packages/analysis/src/index.ts', import.meta.url)),
     '@poker/persistence': fileURLToPath(new URL('./packages/persistence/src/index.ts', import.meta.url))
   } },
-  test: { environment: 'node', include: ['packages/**/*.test.ts'] }
+  test: { environment: 'node', include: ['packages/**/*.test.ts', 'apps/web/src/**/*.test.ts'] }
 });

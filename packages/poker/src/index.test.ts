@@ -1,10 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RANDOM_STATE_CONFIG, SessionManager, applyOptionToState, generateRandomState, rebuildPotLedger, selectDecisionContext, settlePots } from 'poker-engine-ts';
 import type { Card as EngineCard, ShowdownSummary } from 'poker-engine-ts';
 import { cardToText } from '@poker/contracts';
 import { applyAction, createHand, frame, hole, isSettled, legalActions, observe, restoreState, result } from './index';
 
 describe('poker engine adapter', () => {
+  it('replays street transitions exactly even when the clock advances during the action', async () => {
+    let state = await createHand('hero');
+    state = await applyAction(state, 'hero', { kind: 'call' });
+    let tick = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => tick++);
+    try {
+      state = await applyAction(state, 'bot', { kind: 'check' });
+      expect(frame(state).street).toBe('flop');
+      expect(restoreState(state).activeSnapshot).toEqual(state.activeSnapshot);
+    } finally { clock.mockRestore(); }
+  });
   it('posts blinds and charges only the missing half blind on a call', async () => {
     let state = await createHand('hero');
     expect(frame(state).pot).toBe(150);
@@ -57,6 +68,7 @@ describe('poker engine adapter', () => {
     let state = await createHand('hero');
     expect(legalActions(state, 'hero').raise?.min).toBe(200);
     await expect(applyAction(state, 'hero', { kind: 'raiseTo', amount: 199 })).rejects.toThrow('Illegal action');
+    await expect(applyAction(state, 'hero', { kind: 'raiseTo', amount: 200.5 })).rejects.toThrow('Illegal action');
     state = await applyAction(state, 'hero', { kind: 'call' });
     expect(legalActions(state, 'bot').check).toBe(true);
     expect(legalActions(state, 'bot').raise?.min).toBe(200);
