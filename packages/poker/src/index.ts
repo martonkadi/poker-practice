@@ -5,6 +5,8 @@ import type { Action, Actor, Card, LegalActionSet, PlayerObservation, PublicActi
 
 export type EngineState = SerializableSessionState;
 export const ENGINE_PATCH_VERSION = `${ENGINE_VERSION}+blind-opening-contributions-v1.adapter-2`;
+export const BIG_BLIND = 100;
+export const TOTAL_CHIPS = 20_000;
 const SEATS = [{ playerId: 'hero', seatIndex: 0, stack: 10_000 }, { playerId: 'bot', seatIndex: 1, stack: 10_000 }] as const;
 const CONFIG = {
   ...DEFAULT_RANDOM_STATE_CONFIG,
@@ -83,22 +85,42 @@ export function frame(state: EngineState): TableFrame {
   const actor = d.actor === 'hero' || d.actor === 'bot' ? d.actor : null;
   return { street: street(view.handStage), board: board(state), pot: view.potTotal, stacks, commitments: commitments(state), actor, legal: actor ? legalActions(state, actor) : null };
 }
+/** Canonical actions derived from chip amounts only; engine `all-in` labels are ignored. */
 export function history(state: EngineState): PublicAction[] {
+  const blinds = state.activeSnapshot.hand.blinds;
   return state.activeSnapshot.hand.bettingRounds.flatMap(round => {
     const opening = (round as typeof round & { openingContributions?: Partial<Record<Actor, number>> }).openingContributions;
-    const totals = { hero: opening?.hero ?? 0, bot: opening?.bot ?? 0 };
-    return round.turns.filter(x => x.actor === 'hero' || x.actor === 'bot').map(turn => {
+    const blind = (seat: Actor) => round.stage !== 'preflop' ? 0 : blinds.smallBlind.playerId === seat ? 50 : BIG_BLIND;
+    const totals = { hero: Number(opening?.hero ?? blind('hero')), bot: Number(opening?.bot ?? blind('bot')) };
+    let highest = Math.max(totals.hero, totals.bot);
+    return round.turns.filter(x => x.actor === 'hero' || x.actor === 'bot').map((turn): PublicAction => {
       const actor = turn.actor as Actor;
+      const s = street(round.stage);
+      if (turn.action.type === 'fold' || turn.action.type === 'check') return { actor, street: s, action: { kind: turn.action.type }, amount: 0 };
+      if (!isContribution(turn.action)) throw new Error(`Unexpected action in betting history: ${turn.action.type}`);
       totals[actor] += turn.contribution;
-      return { actor, street: street(round.stage), action: eventAction(turn.action, totals[actor]), amount: turn.contribution };
+      const action: Action = totals[actor] > highest ? { kind: 'raiseTo', amount: totals[actor] } : { kind: 'call' };
+      highest = Math.max(highest, totals[actor]);
+      return { actor, street: s, action, amount: turn.contribution };
     });
   });
 }
-function eventAction(action: PlayerAction, total: number): Action {
-  if (action.type === 'fold' || action.type === 'check' || action.type === 'call') return { kind: action.type };
-  if (action.type === 'all-in' && action.from === 'call') return { kind: 'call' };
-  if (action.type === 'bet' || action.type === 'raise' || action.type === 'all-in') return { kind: 'raiseTo', amount: total };
-  throw new Error(`Unexpected action in betting history: ${action.type}`);
+function isContribution(action: PlayerAction): boolean {
+  return action.type === 'call' || action.type === 'bet' || action.type === 'raise' || action.type === 'all-in';
+}
+
+export class RecordError extends Error {
+  constructor(message = 'This action could not be recorded.') { super(message); this.name = 'RecordError'; }
+}
+/** Canonical action and chips added for the actor's single new turn between two states. */
+export function recordedAction(before: EngineState, after: EngineState, actor: Actor): PublicAction {
+  let prior: PublicAction[], next: PublicAction[];
+  try {
+    prior = history(before).filter(x => x.actor === actor);
+    next = history(after).filter(x => x.actor === actor);
+  } catch { throw new RecordError(); }
+  if (next.length !== prior.length + 1) throw new RecordError();
+  return next.at(-1)!;
 }
 export function observe(state: EngineState, seat: Actor): PlayerObservation {
   const f = frame(state);

@@ -1,16 +1,39 @@
 # Poker Practice
 
-A desktop-focused heads-up no-limit Texas Hold’em practice site. Play 100bb hands against Easy or Standard **experimental** bots, then review decisions with pot odds and sampled equity against uniform legal opponent hands. These heuristics are not GTO-optimal and the review does not calculate EV loss. Practice chips have no cash value.
+A guest-only practice site for heads-up no-limit Texas Hold’em. You play complete 100bb hands against one experimental opponent, `standard-v1`, and review each of your saved decisions with the visible cards, the pot and exact pot odds. Hands are saved in this browser. Practice chips have no cash value.
 
-**Current status (audited 2026-09-29):** guest gameplay, local recovery/history/review/progress, import/export, and the static build pass the existing checks. The [private repository's CI](https://github.com/martonkadi/poker-practice/actions/runs/36590954889) also passed its local Supabase authorization/sync tests. The [first deployment attempt](https://github.com/martonkadi/poker-practice/actions/runs/36652432418) passed all 12 release browser tests, then failed on the Supabase IPv6 connection before applying migrations or publishing the function/site. Real Google sign-in, multi-hand cloud sync and deployed account deletion remain unverified; source inspection found session-continuity bugs to fix first. There is no v0.1.0 release yet.
+The opponent is not GTO and its strength has not been measured. The review shows the price of a call; it does not grade decisions or calculate EV loss.
 
-Next: fix critical session/recovery bugs and migration connectivity, deploy an unannounced public-URL test, then finish every v1 gate. Start with [roadmap.md](roadmap.md) for ordered actions and later strategy/review work, [PLAN.md](PLAN.md) for milestone status, and [acceptance evidence](docs/acceptance.md) for test scope. The intended `https://poker-practice.marton-kadi.workers.dev` address currently returns 404 and is not yet a working app.
+Project status lives in [PLAN.md](PLAN.md). This README describes behavior only.
 
-![Actual desktop practice table](docs/screenshots/table-desktop.png)
+![Desktop practice table](docs/screenshots/table-desktop.png)
 
-![Actual decision review](docs/screenshots/review-desktop.png)
+![Decision review with pot odds](docs/screenshots/review-desktop.png)
 
-## Guest quickstart
+## What the MVP does
+
+- **Play:** 50/100 blinds, fresh 10,000-chip stacks each hand and an alternating dealer button. Hands can be played with the mouse or the keyboard. A "Show bb" toggle switches every amount between chips and big blinds.
+- **Opponent:** one experimental policy, `standard-v1`, running in a browser Web Worker. It receives only its own hole cards and the public table state. It never sees your cards, undealt board cards or the deck order.
+- **Local storage:** completed hands and an unfinished hand are saved in IndexedDB on this device. A reload mid-hand restores the same hand. There is no account or cloud backup, so clearing browser data deletes saved hands and they are not available on other devices.
+- **History and review:** History lists each saved hand and its result. Review steps through your decisions, showing your hole cards, the board at that moment, the pot, the price to call and the pot odds. The outcome (final board, result and the bot's cards when the hand reached showdown) stays collapsed until you open it.
+- **Export and deletion:** Settings exports every saved hand as a versioned JSON archive and deletes all local data after an explicit confirmation.
+
+## Not in this MVP
+
+These features are deferred. None of them is available in the app.
+
+- Accounts
+- OAuth (Google or any other sign-in)
+- Cloud sync
+- Archive import
+- Difficulty levels
+- Equity coaching
+- EV-loss grading
+- Strength benchmarking
+
+See [PLAN.md](PLAN.md) and [roadmap.md](roadmap.md) for planning.
+
+## Quickstart
 
 Install Node.js **24.20.0** and Corepack, then from the repository root:
 
@@ -20,36 +43,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open the Vite URL shown in the terminal (normally `http://localhost:5173`). Guest play needs no `.env` file, Google account, or backend. Choose **Start playing**, then **Deal the first hand**. The bot runs in a browser Web Worker. Completed hands and an interrupted hand are saved in IndexedDB on this device.
-
-The clean-checkout commands work in GitHub CI. The current Windows execution shell still needs its pnpm command path/Corepack certificate trust repaired; this environment issue is tracked in roadmap task P0-04. Do not disable TLS verification to download tools.
-
-## Local backend setup
-
-Docker is required for the local Supabase stack. After the guest quickstart:
-
-```text
-pnpm exec supabase start
-pnpm exec supabase db reset
-pnpm test:db
-pnpm exec supabase status -o env
-```
-
-Copy `.env.example` to `.env.local`. Set `VITE_SUPABASE_URL` to the local `API_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the local `ANON_KEY` from `supabase status`. These are browser-visible public values, not service-role credentials. Restart `pnpm dev` after editing `.env.local`.
-
-Google OAuth is disabled in the tracked local `supabase/config.toml` so the database tests can run without Google. To test real local sign-in, configure a Google Cloud Web OAuth client with origin `http://localhost:5173` and callback `http://127.0.0.1:54321/auth/v1/callback`. Set `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET` in an ignored `.env`, then set `[auth.external.google]` to `enabled = true`, `client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"`, and `secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"`. Restart the local stack. See [Google’s Supabase setup guide](https://supabase.com/docs/guides/auth/social-login/auth-google). Do not commit either secret.
-
-## Configuration
-
-| Variable | Where | Purpose |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` | `.env.local` or GitHub environment variable | Public Auth/API endpoint; omit for guest-only mode |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `.env.local` or GitHub environment variable | Public project key; omit for guest-only mode |
-| `VITE_APP_ENV` | `.env.local` or deployment | Build environment label |
-| `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | GitHub production secrets | Static deployment |
-| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD` | GitHub production secrets | Migration and Edge Function deployment |
-
-Google’s client secret goes only into Supabase’s provider settings. The service-role key is used by the account-deletion Edge Function at runtime and must never have a `VITE_` prefix or enter the browser build.
+Open the Vite URL shown in the terminal (normally `http://localhost:5173`). No `.env` file, account or backend is needed. Choose **Start playing**, then **Deal the first hand**.
 
 ## Commands
 
@@ -60,27 +54,34 @@ Google’s client secret goes only into Supabase’s provider settings. The serv
 | `pnpm preview` | Preview the production build |
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | Strict TypeScript check |
-| `pnpm test` | Unit and integration tests, including 100 automated hands |
-| `pnpm test:rules` | Engine adapter regression fixtures |
-| `pnpm test:e2e` | Chromium guest browser tests; run `pnpm exec playwright install chromium` once |
-| `pnpm test:e2e:release` | Sequential Chromium, Firefox and WebKit browser suite; install all three Playwright browsers first |
-| `pnpm test:db` | Local Supabase authorization/sync tests after `supabase start` and `db reset` |
-| `pnpm benchmark` | 10,000 paired deals per opponent with full policy sampling; long-running |
-| `pnpm benchmark:browser` | 30 preflop Web Worker round trips per policy in local Chromium; reports machine and p95 latency |
-| `pnpm check` | Lint, typecheck, unit/integration tests, build |
+| `pnpm test` | Unit and integration tests |
+| `pnpm test:rules` | Rules engine regression fixtures |
+| `pnpm check:dist` | Checks the built `dist/` (entry chunk size, security headers, no cloud or test-only code) |
+| `pnpm check` | Lint, typecheck, unit/integration tests, build and `check:dist` |
+| `pnpm test:e2e` | Chromium browser tests; run `pnpm exec playwright install chromium` once |
+| `pnpm test:e2e:release` | Chromium, Firefox and WebKit browser suite; install all three Playwright browsers first |
+| `pnpm smoke:live --url <url> --commit <sha>` | Live smoke check of a deployed site against an expected commit |
 
-For a quick harness smoke test, run `pnpm benchmark --deals 5 --samples-standard 16 --samples-easy 16`. Its output is **not** strength evidence. The full benchmark must run separately before ordered difficulty claims are published.
+The rules reference comparison runs with `python tools/reference/pokerkit_rules.py`.
+
+## Live smoke check
+
+After a deployment, run:
+
+```text
+pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit <sha>
+```
+
+It requests every app route and an unknown path directly, checks the security headers, plays one hand in a fresh Chromium profile, opens its review, confirms History shows the same result, fails on any request to another origin, and compares the build commit on the About page with `<sha>`. It exits with status zero only when every check passes.
 
 ## Data and privacy
 
-Guest hands live only in IndexedDB. Signed-in hands are saved locally first and queued for transactional cloud synchronization after completion, on reconnect, and from History/Settings. One device produces each session; another can view retained history and start a new session. Two tabs cannot write the same local session simultaneously. Sign-out switches to an account-scoped local namespace. On first sign-in, Settings offers an explicit choice to import guest hands.
+All data stays in this browser's IndexedDB. The app makes no requests to any origin other than the one serving it, and uses no analytics. The hosting provider receives ordinary web requests. Export your hands from Settings before clearing browser storage.
 
-Settings exports versioned JSON, validates and deduplicates imports, deletes this device’s data, and offers account deletion. The cloud retains the latest 500 hands or 2 MiB of hand JSON per user, whichever is lower; older cloud bookmarks vanish when their hand is pruned. Cloud aggregate counters survive detail pruning. Local history is not pruned by cloud retention. The initial cloud enrollment cap is 100 accounts. If the cloud is offline or unavailable, play continues locally and an unavailable-sync message appears.
+See [architecture](docs/architecture.md) and [bot policy](docs/bot-policy.md) for implementation details, and the [deployment runbook](docs/deployment.md) for publishing the static site.
 
-The bot receives only its hole cards and public state. The review equity sampler uses only the player’s cards and board visible at that decision. See [architecture](docs/architecture.md), [bot policy](docs/bot-policy.md), and [operations](docs/operations.md).
+## Contributing and license
 
-## Deployment and contributing
+Read [PLAN.md](PLAN.md), [AGENTS.md](AGENTS.md) and [roadmap.md](roadmap.md) before changing implementation.
 
-The [deployment runbook](docs/deployment.md) covers Supabase, Google, Cloudflare, GitHub secrets, the current connectivity blocker, and rollback. The GitHub repository is private; the planned unannounced `workers.dev` test will be publicly accessible. Read [PLAN.md](PLAN.md), [AGENTS.md](AGENTS.md), and [roadmap.md](roadmap.md) before changing implementation.
-
-First-party code is [MIT licensed](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) include the patched rules engine and PokerKit reference.
+First-party code is [MIT licensed](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) cover the patched rules engine and the PokerKit reference.

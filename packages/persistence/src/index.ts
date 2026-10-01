@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import { handRecordSchema } from '@poker/contracts';
 import type { DecisionRecord, Difficulty, HandRecord } from '@poker/contracts';
 import type { EngineState } from '@poker/poker';
@@ -17,28 +17,47 @@ interface StoredHand { key: string; owner: string; record: HandRecord }
 interface OutboxItem { key: string; owner: string; handId: string; sessionId: string; sequence: number }
 interface Bookmark { key: string; owner: string; handId: string; bookmarked: boolean; dirty: boolean }
 interface Preference { owner: string; chipsAsBb: boolean; animationSpeed: 'normal' | 'fast' | 'none' }
-class PracticeDatabase extends Dexie {
+/** Dexie schema of version 1 (bookmarks lived on `record.bookmarked`). Exported for the migration test. */
+export const SCHEMA_V1 = { active: 'owner', hands: 'key,owner,[owner+record.completedAt]', outbox: 'key,owner', preferences: 'owner' } as const;
+/** Dexie schema of version 2 (bookmarks moved to their own table). */
+export const SCHEMA_V2 = { ...SCHEMA_V1, bookmarks: 'key,owner' } as const;
+/** v1 → v2 upgrade: moves each `record.bookmarked = true` into the bookmarks table. */
+export async function upgradeV1ToV2(tx: Transaction): Promise<void> {
+  const rows = await tx.table<StoredHand, string>('hands').toArray();
+  for (const row of rows) {
+    if (!row.record.bookmarked) continue;
+    await tx.table<Bookmark, string>('bookmarks').put({ key: row.key, owner: row.owner, handId: row.record.id, bookmarked: true, dirty: row.owner !== GUEST_OWNER });
+    await tx.table<StoredHand, string>('hands').put({ ...row, record: { ...row.record, bookmarked: false } });
+  }
+}
+export class PracticeDatabase extends Dexie {
   active!: EntityTable<ActiveSession, 'owner'>;
   hands!: EntityTable<StoredHand, 'key'>;
   outbox!: EntityTable<OutboxItem, 'key'>;
   bookmarks!: EntityTable<Bookmark, 'key'>;
   preferences!: EntityTable<Preference, 'owner'>;
-  constructor() {
-    super('poker-practice');
-    this.version(1).stores({ active: 'owner', hands: 'key,owner,[owner+record.completedAt]', outbox: 'key,owner', preferences: 'owner' });
-    this.version(2).stores({ active: 'owner', hands: 'key,owner,[owner+record.completedAt]', outbox: 'key,owner', preferences: 'owner', bookmarks: 'key,owner' })
-      .upgrade(async tx => {
-        const rows = await tx.table<StoredHand, string>('hands').toArray();
-        for (const row of rows) {
-          if (!row.record.bookmarked) continue;
-          await tx.table<Bookmark, string>('bookmarks').put({ key: row.key, owner: row.owner, handId: row.record.id, bookmarked: true, dirty: row.owner !== GUEST_OWNER });
-          await tx.table<StoredHand, string>('hands').put({ ...row, record: { ...row.record, bookmarked: false } });
-        }
-      });
+  constructor(name = 'poker-practice') {
+    super(name);
+    this.version(1).stores(SCHEMA_V1);
+    this.version(2).stores(SCHEMA_V2).upgrade(upgradeV1ToV2);
   }
 }
 export const db = new PracticeDatabase();
 export const GUEST_OWNER = 'guest';
+export type StoreStatus = { ok: true } | { ok: false; reason: string };
+/**
+ * Opens the store once at boot. Dexie runs schema upgrades inside a
+ * version-change transaction, so a failed open or upgrade aborts without
+ * partial writes and the stored data stays as it was.
+ */
+export async function openStore(database: Dexie = db): Promise<StoreStatus> {
+  try {
+    await database.open();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? `${e.name}: ${e.message}` : String(e) };
+  }
+}
 export async function loadActive(owner: string): Promise<ActiveSession | undefined> { return db.active.get(owner); }
 export async function saveActive(session: ActiveSession): Promise<void> { await db.active.put(session); }
 export async function abandonActive(owner: string): Promise<void> { await db.active.delete(owner); }

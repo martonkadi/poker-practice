@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 import { createHand, hole } from '../../packages/poker/src/index';
 import { textToCard } from '../../packages/contracts/src/index';
 import type { ActiveSession } from '../../packages/persistence/src/index';
@@ -34,9 +34,13 @@ async function strongBotFixture(page: Page): Promise<void> {
 }
 async function finishPassively(page: Page): Promise<void> {
   let reloaded = false;
+  const complete = page.getByRole('heading', { name: 'Hand complete', exact: true });
+  // Wait until the previous action has fully settled: either the hand is over or the
+  // hero is to act with controls enabled (not busy saving or waiting for the bot).
+  const heroReady = page.locator('button:enabled', { hasText: /^(Call|Check)/ });
   for (let i = 0; i < 50; i++) {
-    await expect(page.getByRole('heading', { name: /^(Your decision|Hand complete)$/ })).toBeVisible();
-    if (await page.getByRole('heading', { name: 'Hand complete', exact: true }).isVisible()) return;
+    await expect(complete.or(heroReady).first()).toBeVisible();
+    if (await complete.isVisible()) return;
     if (!reloaded && await page.getByText('FLOP', { exact: true }).isVisible()) {
       const actions = await page.locator('ol li').count();
       await page.reload();
@@ -74,6 +78,9 @@ test('guest finishes, reloads and reviews a hand without cloud requests', async 
 });
 
 test('real worker completes betting through showdown and three successive hands', async ({ page }) => {
+  // Three real-worker hands with a reload, review and export: ~25 UI steps. WebKit on Windows
+  // needs ~1 s per step, so the default 45 s budget is too tight (no assertion is relaxed).
+  test.slow();
   await strongBotFixture(page);
   await page.getByRole('spinbutton', { name: 'Bet / raise to' }).fill('300');
   await page.getByRole('button', { name: 'Raise', exact: true }).click();
@@ -84,7 +91,14 @@ test('real worker completes betting through showdown and three successive hands'
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Bot action · preflop' })).toBeVisible();
   await page.getByRole('link', { name: 'Play', exact: true }).click();
-  for (let i = 0; i < 2; i++) { await page.getByRole('button', { name: 'Next hand' }).click(); await finishPassively(page); }
+  for (let i = 0; i < 2; i++) {
+    // While the next deal saves, the previous hand's "Hand complete" view is still shown.
+    // Wait until that hand's review link is gone so finishPassively sees the new hand.
+    const previous = await page.getByRole('link', { name: 'Review hand' }).getAttribute('href');
+    await page.getByRole('button', { name: 'Next hand' }).click();
+    await expect(page.locator(`a[href="${previous}"]`)).toHaveCount(0);
+    await finishPassively(page);
+  }
   await page.getByRole('link', { name: 'History', exact: true }).click();
   await expect(page.locator('article')).toHaveCount(3);
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
@@ -226,4 +240,15 @@ test('deletion does not race an active table in another tab', async ({ page }) =
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Your decision', exact: true })).toBeVisible();
   await second.close();
+});
+
+test('opponent is labelled standard-v1 experimental and deferred paths are not found', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('opponent-label')).toHaveText('standard-v1 · experimental');
+  await page.goto('/about');
+  await expect(page.getByText('Opponent: standard-v1 · experimental · Guest MVP.', { exact: false })).toBeVisible();
+  for (const path of ['/signin', '/sync', '/import', '/auth/callback']) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+  }
 });

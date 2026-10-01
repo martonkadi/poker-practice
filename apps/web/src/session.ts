@@ -1,7 +1,7 @@
 import type { Action, HandRecord } from '@poker/contracts';
 import type { ActiveSession } from '@poker/persistence';
 import { GUEST_OWNER, saveActive, saveCompleted } from '@poker/persistence';
-import { ENGINE_PATCH_VERSION, applyAction, board, createHand, frame, handIdentity, history, hole, isSettled, result } from '@poker/poker';
+import { ENGINE_PATCH_VERSION, applyAction, board, createHand, frame, handIdentity, hole, isSettled, recordedAction, result } from '@poker/poker';
 
 export async function dealNext(previous: ActiveSession | null): Promise<ActiveSession> {
   if (previous && !isSettled(previous.state)) throw new Error('Finish the current hand first.');
@@ -17,8 +17,9 @@ export async function actAndSave(active: ActiveSession, action: Action): Promise
   const before = frame(active.state);
   if (!before.actor || isSettled(active.state)) throw new Error('This hand is complete.');
   const state = await applyAction(active.state, before.actor, action);
-  const recorded = history(state).at(-1);
-  if (!recorded || recorded.actor !== before.actor) throw new Error('Could not record the accepted action.');
+  // Throws RecordError ("This action could not be recorded.") before any write, so nothing is saved.
+  const recorded = recordedAction(active.state, state, before.actor);
+  // The frame stays frame(before): a street-closing call carries the street it closed.
   const decisions = [...active.decisions, { frame: before, action: recorded.action, amount: recorded.amount, heroHole: hole(active.state, 'hero') }];
   const identity = handIdentity(state);
   const next: ActiveSession = { ...active, state, decisions, recordedHandId: isSettled(state) ? identity.id : undefined };

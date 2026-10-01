@@ -2,7 +2,7 @@
   "name": "poker-practice",
   "type": "module",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "packageManager": "pnpm@12.6.0",
   "engines": {
     "node": "24.20.0"
@@ -10,17 +10,20 @@
   "scripts": {
     "dev": "vite --config vite.config.ts",
     "build": "vite build --config vite.config.ts",
+    "check:dist": "node tools/check-dist.mjs",
     "preview": "vite preview --config vite.config.ts",
     "lint": "eslint apps packages tests --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --config vitest.config.ts",
+    "test:tools": "node --test tools/check-dist.test.mjs tools/serve-dist.test.mjs tools/smoke-live-lib.test.mjs",
     "test:rules": "vitest run --config vitest.config.ts packages/poker",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:release": "playwright test",
     "test:db": "node tools/test-db.mjs",
     "benchmark": "node --import tsx tools/benchmarks/run.ts",
     "benchmark:browser": "node tools/benchmarks/browser-latency.mjs",
-    "check": "node tools/run-check.mjs"
+    "check": "node tools/run-check.mjs",
+    "smoke:live": "node tools/smoke-live.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -34,6 +37,7 @@
     "eslint": "9.39.2",
     "fake-indexeddb": "6.2.5",
     "fast-check": "4.10.2",
+    "happy-dom": "20.14.5",
     "supabase": "2.117.0",
     "tsx": "4.23.13",
     "typescript": "5.9.3",

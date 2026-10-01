@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+// The site CSP has `script-src 'self'` without 'unsafe-eval'. Zod v4 otherwise
+// probes `new Function('')` on first object parse to enable its JIT, which the
+// browser reports as a CSP violation. Jitless mode uses the interpreter only.
+z.config({ jitless: true });
+
 export const cardSchema = z.number().int().min(0).max(51);
 export type Card = z.infer<typeof cardSchema>;
 export const actionSchema = z.discriminatedUnion('kind', [

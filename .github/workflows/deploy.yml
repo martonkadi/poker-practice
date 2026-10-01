@@ -14,11 +14,16 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Build-time variables apply to the `build` task inside `pnpm check`,
+      # which produces the single `dist/` that is tested and then deployed.
       VITE_SUPABASE_URL: ''
       VITE_SUPABASE_PUBLISHABLE_KEY: ''
       VITE_APP_ENV: production
       VITE_GIT_COMMIT: ${{ github.sha }}
     steps:
+      # Ties the run log to the Candidate_Commit (Req 11.8).
+      - name: Print candidate commit
+        run: echo "Candidate commit ${{ github.sha }}"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
@@ -31,9 +36,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Confirm static deployment configuration
         run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
-      - run: pnpm check
+      # lint, typecheck, test, test:tools, build, check:dist (tools/run-check.mjs).
+      - name: Release checks and production build
+        run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
-      - run: pnpm test:e2e:release
+      # Serves the existing dist/ via tools/serve-dist.mjs; never rebuilds.
+      - name: Browser suite (Chromium, Firefox, WebKit) on dist
+        run: pnpm test:e2e:release
       - run: python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt
-      - run: python tools/reference/pokerkit_rules.py
-      - run: pnpm exec wrangler deploy
+      - name: PokerKit reference check
+        run: python tools/reference/pokerkit_rules.py
+      # wrangler.jsonc declares static assets only (./dist) and no build
+      # command, so this uploads the tested dist/ unchanged.
+      - name: Deploy static assets
+        run: pnpm exec wrangler deploy
+      - name: Install Chromium for live smoke check
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Live smoke check (Chromium)
+        run: pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit ${{ github.sha }}

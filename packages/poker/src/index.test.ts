@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RANDOM_STATE_CONFIG, SessionManager, applyOptionToState, generateRandomState, rebuildPotLedger, selectDecisionContext, settlePots } from 'poker-engine-ts';
 import type { Card as EngineCard, ShowdownSummary } from 'poker-engine-ts';
 import { cardToText } from '@poker/contracts';
-import { applyAction, createHand, frame, hole, isSettled, legalActions, observe, restoreState, result } from './index';
+import { BIG_BLIND, RecordError, TOTAL_CHIPS, applyAction, createHand, frame, hole, isSettled, legalActions, observe, recordedAction, restoreState, result } from './index';
 
 describe('poker engine adapter', () => {
   it('replays street transitions exactly even when the clock advances during the action', async () => {
@@ -94,6 +94,40 @@ describe('poker engine adapter', () => {
     state = await applyAction(state, 'hero', { kind: 'call' });
     expect(isSettled(state)).toBe(true);
     expect(frame(state).stacks.hero + frame(state).stacks.bot).toBe(20_000);
+  });
+
+  it('records an all-in that only matches the bet as a call, by amount', async () => {
+    const start = await createHand('hero');
+    const raised = await applyAction(start, 'hero', { kind: 'raiseTo', amount: 10_000 });
+    expect(recordedAction(start, raised, 'hero')).toEqual({ actor: 'hero', street: 'preflop', action: { kind: 'raiseTo', amount: 10_000 }, amount: 9_950 });
+    // Bot pushes all-in for exactly the outstanding bet; the engine labels it `all-in`.
+    const called = await applyAction(raised, 'bot', { kind: 'raiseTo', amount: 10_000 });
+    expect(recordedAction(raised, called, 'bot')).toEqual({ actor: 'bot', street: 'preflop', action: { kind: 'call' }, amount: 9_900 });
+  });
+
+  it('records an all-in over the highest bet as raiseTo with only the chips added', async () => {
+    let state = await createHand('hero');
+    state = await applyAction(state, 'hero', { kind: 'raiseTo', amount: 9_900 });
+    const before = state;
+    state = await applyAction(state, 'bot', { kind: 'raiseTo', amount: 10_000 });
+    expect(recordedAction(before, state, 'bot')).toEqual({ actor: 'bot', street: 'preflop', action: { kind: 'raiseTo', amount: 10_000 }, amount: 9_900 });
+    const beforeCall = state;
+    state = await applyAction(state, 'hero', { kind: 'call' });
+    expect(recordedAction(beforeCall, state, 'hero')).toEqual({ actor: 'hero', street: 'preflop', action: { kind: 'call' }, amount: 100 });
+  });
+
+  it('records fold and check with amount 0 and rejects unmatched turns', async () => {
+    const start = await createHand('hero');
+    const called = await applyAction(start, 'hero', { kind: 'call' });
+    const checked = await applyAction(called, 'bot', { kind: 'check' });
+    expect(recordedAction(called, checked, 'bot')).toEqual({ actor: 'bot', street: 'preflop', action: { kind: 'check' }, amount: 0 });
+    const folded = await applyAction(start, 'hero', { kind: 'fold' });
+    expect(recordedAction(start, folded, 'hero')).toEqual({ actor: 'hero', street: 'preflop', action: { kind: 'fold' }, amount: 0 });
+    expect(() => recordedAction(start, called, 'bot')).toThrow(RecordError);
+    expect(() => recordedAction(start, checked, 'hero')).not.toThrow();
+    expect(() => recordedAction(start, start, 'hero')).toThrow(RecordError);
+    expect(BIG_BLIND).toBe(100);
+    expect(TOTAL_CHIPS).toBe(20_000);
   });
 
   it('refunds uncalled excess after a fold', async () => {

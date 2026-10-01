@@ -1,5 +1,6 @@
 import type { BotDecision } from '@poker/bots';
 import type { Difficulty, PlayerObservation } from '@poker/contracts';
+import type { BotWorkerMessage } from './bot.worker';
 
 let worker: Worker | null = null;
 const pending = new Map<string, { resolve: (value: BotDecision) => void; reject: (reason: Error) => void; cleanup: () => void }>();
@@ -31,7 +32,9 @@ export function requestBot(observation: PlayerObservation, difficulty: Difficult
     const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', cancel); };
     pending.set(id, { resolve, reject, cleanup });
     signal.addEventListener('abort', cancel, { once: true });
-    try { getWorker().postMessage({ kind: 'decide', id, observation, difficulty }); }
+    // Posts exactly { kind, id, observation, difficulty }; observation is observe(state, 'bot') (Req 4.5).
+    const message: BotWorkerMessage = { kind: 'decide', id, observation, difficulty };
+    try { getWorker().postMessage(message); }
     catch { resetWorker(new Error('Could not start the bot. Retry this decision.')); }
   });
 }

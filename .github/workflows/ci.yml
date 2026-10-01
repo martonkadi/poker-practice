@@ -2,7 +2,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    # release/guest-mvp is the GitHub Actions fallback for Release_Checks that
+    # cannot run locally (Req 10.7). Record the run URL against the same SHA.
+    branches: [main, release/guest-mvp]
 permissions:
   contents: read
 concurrency:
@@ -11,8 +13,17 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
+    # Same guest-only build inputs as deploy.yml, so this run checks the
+    # artifact the Deploy_Workflow would build from the same commit.
+    env:
+      VITE_SUPABASE_URL: ''
+      VITE_SUPABASE_PUBLISHABLE_KEY: ''
+      VITE_APP_ENV: production
+      VITE_GIT_COMMIT: ${{ github.sha }}
     steps:
+      - name: Print commit SHA
+        run: echo "Checking commit ${{ github.sha }}"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
@@ -23,12 +34,18 @@ jobs:
       - run: npm install --global corepack@0.35.0
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      # lint, typecheck, test, test:tools, build, check:dist (tools/run-check.mjs)
       - run: pnpm check
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      # Chromium, Firefox and WebKit against the dist built above (no rebuild).
+      # playwright.config.ts sets retries: 0 and forbidOnly: true (Req 10.6).
+      - run: pnpm test:e2e:release
       - run: python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt
       - run: python tools/reference/pokerkit_rules.py
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
   database:
+    # Cloud sync is deferred for the guest MVP, so its local Supabase checks are
+    # not Release_Checks and do not run on the release branch.
+    if: github.ref != 'refs/heads/release/guest-mvp'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

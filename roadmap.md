@@ -1,6 +1,6 @@
 # MVP work queue
 
-Updated 2026-09-30. [PLAN.md](PLAN.md) owns scope/status. The owner approved a guest-only MVP this week. The [previous roadmap](docs/archive/pre-mvp-roadmap-2026-09-30.md) is historical unfinished work.
+Ordered work for the owner-approved guest-only MVP. This file lists scope and order only; see [PLAN.md](PLAN.md) for milestone status, recorded checks and release identifiers. The [previous roadmap](docs/archive/pre-mvp-roadmap-2026-09-30.md) is kept for history.
 
 ## Wednesday September 30: simplify and repair
 
