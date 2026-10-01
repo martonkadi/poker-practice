@@ -70,6 +70,8 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 - Evidence:
   - local Release_Checks on the clean Candidate_Commit: pass (2026-10-01; lint, typecheck, Vitest, test:tools, rules fixtures, build, check:dist, three-browser suite)
   - PokerKit reference on the Candidate_Commit: pass (2026-10-01; 7 rules fixtures compared, 0 mismatches)
+  - release branch push: done (2026-10-01; `git push -u origin release/guest-mvp` created the new remote branch at `b6fe332a46f2e88c052f6b7b9686a58df085d5fd`, which contains the Candidate_Commit plus evidence commits only; secret re-check of all 5 commits since `4ac8b7d` found no credential files and no key/token content)
+  - `ci.yml` run on the pushed branch: result not available (run URL not available; see the `ci.yml` run result gate). Owner can view it at https://github.com/martonkadi/poker-practice/actions?query=branch%3Arelease%2Fguest-mvp
   - Deploy_Workflow on the Candidate_Commit: not run (open Blocked gates for GitHub CLI, Cloudflare secrets and `production` environment)
   - live smoke (`pnpm smoke:live`): not run
   - `v0.1.0-rc.1` prerelease: not run
@@ -162,3 +164,9 @@ Each Blocked_Gate uses this fixed format. Keep open gates here until resolved, t
   Run: local
   Commit: da3ed2fc292ed0d874522e80aa99b0c9ef47de2f
   Owner action: Confirm the `production` environment exists in repository Settings → Environments (create it if missing), or provide authenticated gh access so it can be checked.
+- Gate: `ci.yml` run result for `release/guest-mvp` — blocked (2026-10-01)
+  Step: local `gh run list --branch release/guest-mvp` (gh unavailable); unauthenticated GET https://api.github.com/repos/martonkadi/poker-practice/actions/runs?branch=release/guest-mvp
+  Error: Response status code does not indicate success: 404 (Not Found).
+  Run: not available (Owner view: https://github.com/martonkadi/poker-practice/actions?query=branch%3Arelease%2Fguest-mvp)
+  Commit: b6fe332a46f2e88c052f6b7b9686a58df085d5fd
+  Owner action: Report the `ci.yml` run URL and result for this push, or provide authenticated gh access so it can be read. The run is not counted as passed until recorded.
