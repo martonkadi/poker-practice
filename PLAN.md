@@ -60,7 +60,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 - Evidence (2026-10-01, Candidate_Commit):
   - Vitest: pass, 75 passed / 0 failed
   - three-browser suite (review, missing review, export, deletion, keyboard, 390px): pass, 105 passed / 0 failed
-  - replacement screenshots from the Candidate_Commit `dist`: not run
+  - replacement screenshots from the Candidate_Commit `dist`: pass (2026-10-01; Chromium via `tools/serve-dist.mjs`, entry chunk `/assets/index-B-oJAD1B.js` with the Candidate SHA embedded; `table-desktop.png` 1440x1288, `review-desktop.png` 1440x931, `table-mobile.png` 390x1421; no deferred-feature UI)
 
 ### MVP-4 Publish and verify
 
