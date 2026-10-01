@@ -1,6 +1,6 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` passed the local Release_Checks and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01; deployment, live smoke and prerelease are not run yet.
+Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` is superseded: its Deploy_Workflow run failed on 2026-10-01 at the browser suite (`/about` overflowed the 390 px viewport on the Linux runner), so `wrangler deploy` did not run. A new Candidate_Commit with the layout fix follows; deployment, live smoke and prerelease are not run yet for it.
 
 ## Goal and deadline
 
@@ -72,7 +72,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
   - PokerKit reference on the Candidate_Commit: pass (2026-10-01; 7 rules fixtures compared, 0 mismatches)
   - release branch push: done (2026-10-01; `git push -u origin release/guest-mvp` created the new remote branch at `b6fe332a46f2e88c052f6b7b9686a58df085d5fd`, which contains the Candidate_Commit plus evidence commits only; secret re-check of all 5 commits since `4ac8b7d` found no credential files and no key/token content)
   - `ci.yml` run on the pushed branch: result not available (run URL not available; see the `ci.yml` run result gate). Owner can view it at https://github.com/martonkadi/poker-practice/actions?query=branch%3Arelease%2Fguest-mvp
-  - Deploy_Workflow on the Candidate_Commit: not run (open Blocked gates for GitHub CLI, Cloudflare secrets and `production` environment)
+  - Deploy_Workflow on Candidate `911e9e9`: fail (2026-10-01; run https://github.com/martonkadi/poker-practice/actions/runs/36937212698, dispatched by the Owner on `deploy/911e9e9`). Step "Browser suite (Chromium, Firefox, WebKit) on dist" (`pnpm test:e2e:release`): 102 passed, 3 failed. The failing test was `tests/e2e/data-layout.spec.ts` › "every route fits a 390 px viewport without horizontal page overflow" in all three browsers, error `/about scrollWidth` 426 > 390. `wrangler deploy` was not run, the Live_Site is unchanged and the deployment is not delivered. Candidate `911e9e9` is superseded (see [Superseded candidates](#superseded-candidates)).
   - live smoke (`pnpm smoke:live`): not run
   - `v0.1.0-rc.1` prerelease: not run
 - Deployment: not delivered.
@@ -104,6 +104,16 @@ Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` on `release/guest-mv
 Entry chunk: `/assets/index-B-oJAD1B.js`, 467,529 bytes (limit 500,000).
 
 PokerKit reference: run 2026-10-01 for Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` with Python 3.14.7 and `pokerkit==0.7.6`, installed into a virtualenv outside the repository via `python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt`. It ran from evidence commit `991ed869c45cb4bbabcd4b4eb049c8c20f633d63`, which differs from the Candidate_Commit only in `PLAN.md`; `packages/poker/fixtures` and `tools/reference` are identical to the Candidate_Commit. Output: `7 rules fixtures compared, 0 mismatches`.
+
+### Superseded candidates
+
+- `911e9e90d398e4b8a7f290423434e05edea973ff` (2026-10-01): superseded. Local Release_Checks passed on Windows, but the Deploy_Workflow run https://github.com/martonkadi/poker-practice/actions/runs/36937212698 failed at "Browser suite (Chromium, Firefox, WebKit) on dist" with 102 passed / 3 failed (`/about scrollWidth` 426 > 390 in Chromium, Firefox and WebKit). `wrangler deploy` did not run, so this candidate was not delivered.
+  - Root cause: the About page prints the full 40-character build SHA in a `.prose` paragraph. A hex SHA is one unbreakable word. At a 390 px viewport the page has 358 px of content width (16 px padding each side). The SHA is about 351 px wide in the Windows fallback fonts, so it fits. In wider sans-serif fallbacks such as DejaVu Sans, which is common on Linux runners, it is about 407–410 px wide, and its text run ends at 423–426 px. Reproduced locally by forcing `"DejaVu Sans", Verdana, sans-serif`: `/about` scrollWidth was 423 in all three browsers. No other route overflowed at 390 px.
+  - Fix: `overflow-wrap: anywhere` on `.prose` in `apps/web/src/styles.module.css`, so the SHA wraps inside the paragraph. The displayed value stays the full SHA. The same probe found one more overflow, at a 320 px viewport only: the `/play` bet row's min-content was wider than the panel (scrollWidth 337–342). A `max-width: 359px` rule now lets that row wrap. Neither rule changes layout at the 390 px and 1440 px screenshot sizes with the default fonts.
+
+### Deploy dispatch ref convention
+
+The Owner dispatches the Deploy_Workflow from a branch named `deploy/<first 7 characters of the Candidate SHA>` that points exactly at the Candidate_Commit, not at a later evidence commit. The agent creates and pushes that branch without checking it out, and confirms with `git ls-remote origin refs/heads/deploy/<short-sha>` that it equals the full Candidate SHA. The run's first step prints `github.sha`, which must equal the Candidate SHA (Req 11.8). Old `deploy/*` refs are left in place.
 
 ### Evidence commit rule (confirmed by the Owner 2026-10-01)
 
