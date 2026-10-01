@@ -1,6 +1,6 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` passed the local Release_Checks on 2026-10-01; PokerKit reference, deployment, live smoke and prerelease are not run yet.
+Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` passed the local Release_Checks and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01; deployment, live smoke and prerelease are not run yet.
 
 ## Goal and deadline
 
@@ -50,7 +50,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
   - Vitest: pass, 21 files / 75 passed / 0 failed
   - rules fixtures (`pnpm test:rules`, `packages/poker`): pass, 4 files / 30 passed / 0 failed (incl. `rules-fixtures.test.ts` 8/8)
   - three-browser suite (`pnpm test:e2e:release`, retries 0): pass, 105 passed / 0 failed (Chromium 35, Firefox 35, WebKit 35)
-  - PokerKit reference (`tools/reference/pokerkit_rules.py`): not run
+  - PokerKit reference (`tools/reference/pokerkit_rules.py`, pokerkit 0.7.6): pass, 7 rules fixtures compared / 0 mismatches
 
 ### MVP-3 Review and data
 
@@ -69,7 +69,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 - Commit: `911e9e90d398e4b8a7f290423434e05edea973ff` (Candidate_Commit).
 - Evidence:
   - local Release_Checks on the clean Candidate_Commit: pass (2026-10-01; lint, typecheck, Vitest, test:tools, rules fixtures, build, check:dist, three-browser suite)
-  - PokerKit reference on the Candidate_Commit: not run
+  - PokerKit reference on the Candidate_Commit: pass (2026-10-01; 7 rules fixtures compared, 0 mismatches)
   - Deploy_Workflow on the Candidate_Commit: not run (open Blocked gates for GitHub CLI, Cloudflare secrets and `production` environment)
   - live smoke (`pnpm smoke:live`): not run
   - `v0.1.0-rc.1` prerelease: not run
@@ -97,9 +97,11 @@ Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` on `release/guest-mv
 | production build | `pnpm build` (in `pnpm check`) | pass | n/a | n/a |
 | check:dist | `pnpm check:dist` (in `pnpm check`) | pass (entry-size, cloud-code, test-hook, inline-markup, headers) | n/a | n/a |
 | three-browser suite | `pnpm test:e2e:release` (retries 0) | pass | 105 (Chromium 35, Firefox 35, WebKit 35) | 0 |
-| PokerKit reference | `python tools/reference/pokerkit_rules.py` | not run | | |
+| PokerKit reference | `python tools/reference/pokerkit_rules.py` | pass (exit 0) | 7 rules fixtures compared (plus built-in blind/limp/min-raise/fold/all-in/side-pot asserts) | 0 mismatches |
 
 Entry chunk: `/assets/index-B-oJAD1B.js`, 467,529 bytes (limit 500,000).
+
+PokerKit reference: run 2026-10-01 for Candidate_Commit `911e9e90d398e4b8a7f290423434e05edea973ff` with Python 3.14.7 and `pokerkit==0.7.6`, installed into a virtualenv outside the repository via `python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt`. It ran from evidence commit `991ed869c45cb4bbabcd4b4eb049c8c20f633d63`, which differs from the Candidate_Commit only in `PLAN.md`; `packages/poker/fixtures` and `tools/reference` are identical to the Candidate_Commit. Output: `7 rules fixtures compared, 0 mismatches`.
 
 ### Evidence commit rule (confirmed by the Owner 2026-10-01)
 
