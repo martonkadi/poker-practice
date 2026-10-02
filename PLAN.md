@@ -1,6 +1,6 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` is superseded: its Deploy_Workflow run deployed it (Cloudflare version `ca03b60e-f4bb-4361-9e2b-c380fbfa9862`), but the live smoke step failed 1 of 12 steps ("about commit"). During edge propagation Cloudflare served the old and the new version side by side. The smoke's direct fetches passed while checking the old build, because they did not verify which build the shell belonged to. A later local check found that the Live_Site now serves `d4f22b9` on every request and passes the smoke. The new Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1` makes every fetch step verify the entry script's embedded commit, and it makes the wait require 5 consecutive matching probes (see [Superseded candidates](#superseded-candidates)). It passed every local Release_Check and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01. Its deployment, live smoke and prerelease have not run yet. Earlier Candidates `9d15c68` and `911e9e9` are also superseded.
+Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: deployed, not yet delivered. The Owner's Deploy_Workflow run on Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1` (dispatched from `deploy/3b431ed`) passed every step on 2026-10-01, including `wrangler deploy` (Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`) and the in-workflow live smoke. The Live_Site serves `3b431ed` on 10 of 10 independent probes. The live smoke record (task 15.6), the `v0.1.0-rc.1` prerelease and the Delivery_Report are still pending (see MVP-4). Previous summary: Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` is superseded: its Deploy_Workflow run deployed it (Cloudflare version `ca03b60e-f4bb-4361-9e2b-c380fbfa9862`), but the live smoke step failed 1 of 12 steps ("about commit"). During edge propagation Cloudflare served the old and the new version side by side. The smoke's direct fetches passed while checking the old build, because they did not verify which build the shell belonged to. A later local check found that the Live_Site now serves `d4f22b9` on every request and passes the smoke. The new Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1` makes every fetch step verify the entry script's embedded commit, and it makes the wait require 5 consecutive matching probes (see [Superseded candidates](#superseded-candidates)). It passed every local Release_Check and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01. Earlier Candidates `9d15c68` and `911e9e9` are also superseded.
 
 ## Goal and deadline
 
@@ -39,7 +39,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
   - typecheck: pass
   - production build: pass
   - check:dist: pass (entry chunk 467,530 bytes ≤ 500,000)
-  - Deploy_Workflow run on `3b431ed`: not run (Owner dispatch pending; the run on superseded `d4f22b9` deployed but failed the live smoke 1 of 12, see MVP-4)
+  - Deploy_Workflow run on `3b431ed`: pass (2026-10-01; run https://github.com/martonkadi/poker-practice/actions/runs/36947927596/job/110654137598, dispatched by the Owner on `deploy/3b431ed`; Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`, see MVP-4)
 
 ### MVP-2 Reliable play/storage
 
@@ -69,6 +69,10 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 - Gate: candidate checks, real Cloudflare URL, built/live routes and guest smoke, tested commit/tag/limitations recorded.
 - Commit: `3b431ed369705604feb3602d268a98aaffcaedd1` (Candidate_Commit; supersedes `d4f22b9`, `9d15c68` and `911e9e9`).
 - Evidence:
+  - Deploy_Workflow on Candidate `3b431ed`: pass (2026-10-01; run https://github.com/martonkadi/poker-practice/actions/runs/36947927596/job/110654137598, dispatched by the Owner on `deploy/3b431ed`). The Owner reports that every step passed: the pre-deploy Release_Checks, "Deploy static assets" (`wrangler deploy`, `Current Version ID: 8562db59-6141-4249-859d-380f9c3f1e6d`) and the in-workflow "Live smoke check (Chromium)". The Owner did not paste the full log; the agent read none of it (`gh` is unavailable).
+    - Deployed SHA = Candidate `3b431ed369705604feb3602d268a98aaffcaedd1` (Req 11.8). The run was dispatched from `deploy/3b431ed`, and `git ls-remote origin refs/heads/deploy/3b431ed` returned `3b431ed369705604feb3602d268a98aaffcaedd1` (re-checked 2026-10-01 20:01 CDT), so `github.sha` is the Candidate. The printed-SHA step is reported as passed by the Owner; its line was not pasted. The in-workflow smoke ran with `--commit ${{ github.sha }}`, and it passed per the Owner.
+    - Independent Live_Site check (2026-10-01, 20:01:55–20:02:25 CDT, local, read-only Node `fetch` GETs with `NODE_OPTIONS=--use-system-ca` against https://poker-practice.marton-kadi.workers.dev): 10 probes about 3 s apart over 29.7 s, rotating `/`, `/play` and `/about`. Each probe fetched the HTML's module entry script. Result: 10 of 10 returned 200 with entry `/assets/index-Zh9Q6LmR.js` (the entry of the local Candidate build), served 200 `text/javascript` with `nosniff` and `no-referrer`. Each embedded exactly one full SHA, `3b431ed369705604feb3602d268a98aaffcaedd1`.
+    - This is not the task 15.6 live smoke record, which is still pending.
   - local Release_Checks on the clean Candidate_Commit `3b431ed`: pass (2026-10-01; lint, typecheck, Vitest 75, test:tools 36, rules fixtures 30, build, check:dist, three-browser suite 108 passed / 6 skipped / 0 failed, wide-font 390 px probe 108/108, PokerKit 7 fixtures / 0 mismatches)
   - local smoke of the `3b431ed` `dist` (2026-10-01): `pnpm smoke:live --url http://127.0.0.1:4185 --commit 3b431ed369705604feb3602d268a98aaffcaedd1` against `tools/serve-dist.mjs` printed `PASS all 12 steps`. The build was stable on 5 consecutive probes after 13.7 s, with 0 of 5 mismatched, and every fetch step's entry `/assets/index-Zh9Q6LmR.js` embedded the Candidate SHA. The e2e regression runs (`--unrouted-ms 8000`, a 10 s mixed window, and a mixed state that never ends) passed as part of the three-browser suite. Localhost does not count as the live smoke.
   - `3b431ed`'s smoke script against the Live_Site, which still serves `d4f22b9` (2026-10-01, 19:45 CDT, local): `--commit d4f22b9f8f0af432b99aa192f90fa7819c3f3189` printed `PASS all 12 steps`. The build was stable on 5 consecutive probes after 16.2 s, with 0 of 5 mismatched. All 7 fetch steps observed entry `/assets/index-BPXF_Fko.js` (200 `text/javascript`) embedding `d4f22b9f8f0af432b99aa192f90fa7819c3f3189`, and a hand completed in 3.8 s (+933 chips) with the review matching History (23 requests, 8 responses). This confirms the stricter checks pass on real Cloudflare. It is not the smoke of the new Candidate.
@@ -100,9 +104,9 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
   - release branch push for superseded `911e9e9`: done (2026-10-01; `git push -u origin release/guest-mvp` created the new remote branch at `b6fe332a46f2e88c052f6b7b9686a58df085d5fd`, which contains the Candidate_Commit plus evidence commits only; secret re-check of all 5 commits since `4ac8b7d` found no credential files and no key/token content)
   - `ci.yml` run on the pushed branch (`911e9e9` plus evidence commits): result not available (run URL not available; see the `ci.yml` run result gate). `ci.yml` also builds with the full SHA, so it probably failed the same 390 px test. This was not verified. Owner can view it at https://github.com/martonkadi/poker-practice/actions?query=branch%3Arelease%2Fguest-mvp
   - Deploy_Workflow on Candidate `911e9e9`: fail (2026-10-01; run https://github.com/martonkadi/poker-practice/actions/runs/36937212698, dispatched by the Owner on `deploy/911e9e9`). Step "Browser suite (Chromium, Firefox, WebKit) on dist" (`pnpm test:e2e:release`): 102 passed, 3 failed. The failing test was `tests/e2e/data-layout.spec.ts` › "every route fits a 390 px viewport without horizontal page overflow" in all three browsers, error `/about scrollWidth` 426 > 390. `wrangler deploy` was not run, the Live_Site is unchanged and the deployment is not delivered. Candidate `911e9e9` is superseded (see [Superseded candidates](#superseded-candidates)).
-  - Deploy_Workflow and live smoke (`pnpm smoke:live`) for Candidate `3b431ed`: not run
+  - live smoke (`pnpm smoke:live`, task 15.6) for Candidate `3b431ed`: not run by the agent yet (the in-workflow smoke passed per the Owner, see above)
   - `v0.1.0-rc.1` prerelease: not run
-- Deployment: not delivered. The Live_Site serves superseded `d4f22b9` (Cloudflare version `ca03b60e-f4bb-4361-9e2b-c380fbfa9862`).
+- Deployment: deployed (2026-10-01). The Live_Site serves Candidate `3b431ed369705604feb3602d268a98aaffcaedd1` (Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`, run https://github.com/martonkadi/poker-practice/actions/runs/36947927596/job/110654137598). Not yet delivered: the live smoke record, the prerelease and the Delivery_Report (tasks 15.6–15.8) are pending.
 
 ## Release checks
 
@@ -193,7 +197,7 @@ MVP risks: action/tab/worker recovery, incomplete browser journeys, saved call/a
 ## Delivery
 
 Repository: https://github.com/martonkadi/poker-practice (private).
-Intended app: https://poker-practice.marton-kadi.workers.dev (live since 2026-10-01; it now serves superseded Candidate `d4f22b9`; not delivered).
+Intended app: https://poker-practice.marton-kadi.workers.dev (live since 2026-10-01; it now serves Candidate `3b431ed`, Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`; deployed, not yet delivered).
 Only create an MVP prerelease at the tested deployed commit after MVP-4 passes. Record exact checks, URLs and limitations.
 
 ## Blocked gates
@@ -215,21 +219,24 @@ Each Blocked_Gate uses this fixed format. Keep open gates here until resolved, t
   Run: local
   Commit: da3ed2fc292ed0d874522e80aa99b0c9ef47de2f
   Owner action: Install GitHub CLI (e.g. `winget install --id GitHub.cli`) and run `gh auth login` with access to martonkadi/poker-practice (repo, workflow scopes).
-- Gate: Cloudflare secrets (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID) — blocked (2026-09-30)
+- Gate: Cloudflare secrets (CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID) — resolved (2026-10-01; blocked 2026-09-30)
   Step: local `gh secret list` and `gh secret list --env production`
   Error: not run; gh is not installed (see GitHub CLI access gate), so secret names could not be listed
   Run: local
   Commit: da3ed2fc292ed0d874522e80aa99b0c9ef47de2f
   Owner action: Confirm both secrets exist on martonkadi/poker-practice (repo or `production` environment); add any that are missing. Names only need confirming, not values.
-- Gate: `production` environment — blocked (2026-09-30)
+  Resolved (2026-10-01, Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1`): in run https://github.com/martonkadi/poker-practice/actions/runs/36947927596/job/110654137598, the step "Confirm static deployment configuration" (`test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"`) passed, and Cloudflare accepted the credentials: `wrangler deploy` reported `Current Version ID: 8562db59-6141-4249-859d-380f9c3f1e6d` (per the Owner). The earlier `9d15c68` and `d4f22b9` runs had also deployed successfully.
+- Gate: `production` environment — resolved (2026-10-01; blocked 2026-09-30)
   Step: local `gh api repos/martonkadi/poker-practice/environments` (gh unavailable); unauthenticated GET https://api.github.com/repos/martonkadi/poker-practice/environments
   Error: Response status code does not indicate success: 404 (Not Found).
   Run: local
   Commit: da3ed2fc292ed0d874522e80aa99b0c9ef47de2f
   Owner action: Confirm the `production` environment exists in repository Settings → Environments (create it if missing), or provide authenticated gh access so it can be checked.
+  Resolved (2026-10-01, Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1`): the `deploy.yml` job declares `environment: production`, and its run https://github.com/martonkadi/poker-practice/actions/runs/36947927596/job/110654137598 completed every step, including the deploy step, in that environment (per the Owner).
 - Gate: `ci.yml` run result for `release/guest-mvp` — blocked (2026-10-01)
   Step: local `gh run list --branch release/guest-mvp` (gh unavailable); unauthenticated GET https://api.github.com/repos/martonkadi/poker-practice/actions/runs?branch=release/guest-mvp
   Error: Response status code does not indicate success: 404 (Not Found).
   Run: not available (Owner view: https://github.com/martonkadi/poker-practice/actions?query=branch%3Arelease%2Fguest-mvp)
   Commit: b6fe332a46f2e88c052f6b7b9686a58df085d5fd
   Owner action: Report the `ci.yml` run URL and result for this push, or provide authenticated gh access so it can be read. The run is not counted as passed until recorded.
+  Still open (2026-10-01): the results for the later `release/guest-mvp` pushes, which include Candidate `3b431ed` and its evidence commits, are also not available to the agent. The repository is private and `gh` is unavailable. The Owner can view it at the link above.
