@@ -72,7 +72,7 @@ After a deployment, run:
 pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit <sha>
 ```
 
-It first waits up to 90 s for the About page to show `<sha>`, because Cloudflare can briefly answer with a 404 or the previous version right after `wrangler deploy`. Then it requests every app route and an unknown path directly, checks the security headers, plays one hand in a fresh Chromium profile, opens its review, confirms History shows the same result, fails on any request to another origin, and compares the build commit on the About page with `<sha>`. It exits with status zero only when every check passes.
+It first waits up to 90 s until `<sha>` is served stably: 5 consecutive probes, at least 3 s apart, must each show `<sha>` on the About page and in the entry script of a directly fetched `/`. Right after `wrangler deploy`, Cloudflare can briefly answer with a 404, or with the previous and the new version side by side. Then it requests every app route and an unknown path directly, checks the security headers, requires each page's entry script to embed `<sha>`, plays one hand in a fresh Chromium profile, opens its review, confirms History shows the same result, fails on any request to another origin, and compares the build commit on the About page with `<sha>`. It exits with status zero only when every check passes.
 
 ## Data and privacy
 

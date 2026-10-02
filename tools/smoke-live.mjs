@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 // Live smoke check for a deployed site (Req 12).
 //
-// 1. Waits for the deployment: in a Chromium context of its own, polls /about for up to
-//    90 s until the build commit matches --commit (Req 12.4). Right after `wrangler deploy`
-//    returns, Cloudflare's edge can still answer with a bare 404 that is not the app (seen
-//    on the first deploy of 9d15c68) or with the previous version. Responses seen while
-//    waiting are therefore not header-checked; the checks below run afterwards, against
-//    the deployment that shows the expected commit. Request origins are still recorded.
+// 1. Waits for the deployment to be served stably, for at most 90 s. Right after
+//    `wrangler deploy` returns, Cloudflare's edge can still answer with a bare 404 that is
+//    not the app (first deploy of 9d15c68) or serve the old and the new version side by
+//    side (deploy of d4f22b9: one /about load showed the new commit, the next one the old
+//    one). A probe loads /about in a new Chromium context and fetches `/` plus its entry
+//    script directly; it matches only if /about shows --commit AND the entry script embeds
+//    it. The wait ends after STABLE_PROBES consecutive matching probes at least
+//    PROBE_INTERVAL_MS apart; any mismatch resets the streak. Responses seen while waiting
+//    are not header-checked; request origins are still recorded.
 // 2. Fetches each SMOKE_PATHS entry directly, once, with a 10 s timeout: HTTP 200, HTML, a
-//    same-origin entry module script, the Requirement 8 CSP, nosniff and no-referrer.
+//    same-origin entry module script, the Requirement 8 CSP, nosniff and no-referrer. Then
+//    fetches that entry script once (10 s timeout): HTTP 200, JavaScript MIME type,
+//    nosniff, no-referrer, and the expected build commit embedded in it, so a shell from
+//    an older deployment fails the step (Req 12.1, 12.4, 12.5).
 // 3. In a fresh Chromium context (no saved app data), records every request and response:
 //    - fails on any request to a foreign origin (Req 12.3);
 //    - fails on any same-origin response without nosniff/no-referrer, or an HTML
@@ -16,6 +22,8 @@
 //    - loads /about once and confirms the build commit again (Req 12.4);
 //    - plays one hand with check/call within 120 s, opens its review and confirms the
 //      first History row is that hand with the same result (Req 12.2).
+//    If step 1 did not confirm the expected build, these steps fail without playing:
+//    a hand played against an unconfirmed build says nothing about the Candidate.
 // 4. Prints one PASS/FAIL line per step with URL, expected and observed values and exits
 //    0 only if every step passed (Req 12.6, 12.7).
 //
@@ -27,7 +35,9 @@ import {
   FETCH_TIMEOUT_MS,
   HAND_TIMEOUT_MS,
   MIN_COMMIT_PREFIX,
+  PROBE_INTERVAL_MS,
   SMOKE_PATHS,
+  STABLE_PROBES,
   commitMatches,
   entryScript,
   exitCode,
@@ -39,37 +49,74 @@ import {
   pageProblems,
   parseArgs,
   parseBuildCommit,
-  parseReviewResult
+  parseReviewResult,
+  scriptProblems
 } from './smoke-live-lib.mjs';
 
-const COMMIT_POLL_INTERVAL_MS = 5_000;
 const UI_STEP_TIMEOUT_MS = 30_000;
-const FETCH_EXPECTED = '200 text/html with a same-origin entry module script, Requirement 8 CSP, nosniff, no-referrer';
+/** Upper bound for one /about load while waiting, so a broken mixed-version page cannot eat the wait. */
+const PROBE_UI_TIMEOUT_MS = 10_000;
+const STABILITY = `${STABLE_PROBES} consecutive probes at least ${PROBE_INTERVAL_MS / 1000} s apart`;
 
 const message = (error) => (error instanceof Error ? error.message.split('\n')[0] : String(error));
+const timedOut = (error) => error?.name === 'TimeoutError' || error?.name === 'AbortError';
+const requestError = (error) => (timedOut(error)
+  ? `no response within ${FETCH_TIMEOUT_MS / 1000} s`
+  : `request failed: ${message(error?.cause ?? error)}`);
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-/** Step 1: direct requests without in-app navigation (Req 12.1, 12.5). */
-async function fetchStep(origin, pathname) {
+/** One GET with a 10 s timeout, shortened to end by `deadline` (epoch ms) if one is given. */
+const fetchOnce = (url, deadline = Infinity) => fetch(url, {
+  redirect: 'manual',
+  cache: 'no-store',
+  signal: AbortSignal.timeout(Math.max(1, Math.min(FETCH_TIMEOUT_MS, deadline - Date.now())))
+});
+
+/**
+ * Fetches one path directly, then the entry module script its HTML loads.
+ * @returns {Promise<{ status: number, contentType: string, entry: string | null,
+ *   script: { status: number, contentType: string } | null, buildCommit: string | null,
+ *   problems: string[] }>} `buildCommit` is set only when the entry script embeds `commit`
+ */
+async function fetchShell(origin, pathname, commit, deadline = Infinity) {
+  const response = await fetchOnce(new URL(pathname, `${origin}/`).href, deadline);
+  const body = await response.text();
+  const headers = normalizeHeaders(response.headers);
+  const problems = pageProblems({ status: response.status, headers, body, siteOrigin: origin });
+  const entry = entryScript(body, origin);
+  const shell = { status: response.status, contentType: headers['content-type'] ?? '', entry, script: null, buildCommit: null, problems };
+  if (!entry) return shell;
+  try {
+    const scriptResponse = await fetchOnce(new URL(entry, `${origin}/`).href, deadline);
+    const scriptBody = await scriptResponse.text();
+    const scriptHeaders = normalizeHeaders(scriptResponse.headers);
+    const script = scriptProblems({ status: scriptResponse.status, headers: scriptHeaders, body: scriptBody, commit });
+    shell.script = { status: scriptResponse.status, contentType: scriptHeaders['content-type'] ?? '' };
+    shell.buildCommit = script.commit;
+    problems.push(...script.problems.map((problem) => `entry ${entry}: ${problem}`));
+  } catch (error) {
+    problems.push(`entry ${entry}: ${requestError(error)}`);
+  }
+  return shell;
+}
+
+const fetchExpected = (commit) => '200 text/html with a same-origin entry module script, Requirement 8 CSP, nosniff, no-referrer;'
+  + ` the entry script answers 200 JavaScript with nosniff and no-referrer and embeds build commit ${commit}`;
+
+/** Step 2: direct requests without in-app navigation, plus the entry script they load (Req 12.1, 12.4, 12.5). */
+async function fetchStep(origin, pathname, commit) {
   const url = new URL(pathname, `${origin}/`).href;
   const step = `fetch ${pathname}`;
+  const expected = fetchExpected(commit);
   try {
-    const response = await fetch(url, {
-      redirect: 'manual',
-      cache: 'no-store',
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
-    });
-    const body = await response.text();
-    const headers = normalizeHeaders(response.headers);
-    const problems = pageProblems({ status: response.status, headers, body, siteOrigin: origin });
-    const entry = entryScript(body, origin);
-    const observed = problems.length === 0
-      ? `${response.status} ${headers['content-type']}, entry ${entry}, headers ok`
-      : problems.join('; ');
-    return { step, url, expected: FETCH_EXPECTED, observed, pass: problems.length === 0 };
+    const shell = await fetchShell(origin, pathname, commit);
+    const pass = shell.problems.length === 0;
+    const observed = pass
+      ? `${shell.status} ${shell.contentType}, entry ${shell.entry} (${shell.script.status} ${shell.script.contentType}, build commit ${shell.buildCommit}), headers ok`
+      : shell.problems.join('; ');
+    return { step, url, expected, observed, pass };
   } catch (error) {
-    const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
-    const observed = timedOut ? `no response within ${FETCH_TIMEOUT_MS / 1000} s` : `request failed: ${message(error?.cause ?? error)}`;
-    return { step, url, expected: FETCH_EXPECTED, observed, pass: false };
+    return { step, url, expected, observed: requestError(error), pass: false };
   }
 }
 
@@ -89,33 +136,78 @@ async function readAboutCommit(page, url, timeoutMs) {
 }
 
 /**
- * Polls /about until the displayed build commit matches, i.e. until the edge serves the
- * expected deployment (Req 12.4).
- * @returns {Promise<{ pass: boolean, observed: string, seconds: string }>}
+ * One wait probe: /about in a new browser context, plus `/` and its entry script fetched
+ * directly. Matches only if both show the expected commit.
+ * @returns {Promise<{ ok: boolean, observed: string }>}
  */
-async function waitForCommit(page, url, commit) {
+async function probeOnce(browser, origin, commit, requested, deadline) {
+  const aboutUrl = new URL('/about', `${origin}/`).href;
+  let about = { ok: false, observed: 'About page not loaded' };
+  const context = await browser.newContext();
+  try {
+    context.on('request', (request) => requested.push(request.url()));
+    const { shown, observed } = await readAboutCommit(await context.newPage(), aboutUrl, Math.min(PROBE_UI_TIMEOUT_MS, deadline - Date.now()));
+    about = { ok: commitMatches(shown, commit), observed: `/about ${observed}` };
+  } catch (error) {
+    about = { ok: false, observed: `/about error: ${message(error)}` };
+  } finally {
+    await context.close().catch(() => {});
+  }
+  let shell;
+  try {
+    const result = await fetchShell(origin, '/', commit, deadline);
+    const ok = result.status === 200 && result.buildCommit !== null;
+    const commitProblem = result.problems.find((problem) => problem.startsWith('entry ')) ?? `HTTP ${result.status}, entry ${result.entry ?? 'missing'}`;
+    shell = { ok, observed: ok ? `/ entry ${result.entry} build commit ${result.buildCommit}` : `/ ${commitProblem}` };
+  } catch (error) {
+    shell = { ok: false, observed: `/ ${requestError(error)}` };
+  }
+  return { ok: about.ok && shell.ok, observed: `${about.observed}; ${shell.observed}` };
+}
+
+/**
+ * Step 1: probes until the expected build is served on STABLE_PROBES consecutive probes, at
+ * most COMMIT_POLL_TIMEOUT_MS in total (Req 12.4). Any mismatch resets the streak.
+ * @returns {Promise<{ pass: boolean, observed: string, seconds: string, probes: number, mismatched: number }>}
+ */
+async function waitForDeployment(browser, origin, commit, requested) {
   const started = Date.now();
   const deadline = started + COMMIT_POLL_TIMEOUT_MS;
   const seconds = () => ((Date.now() - started) / 1000).toFixed(1);
-  let observed = 'About page not loaded';
-  for (;;) {
-    try {
-      const result = await readAboutCommit(page, url, deadline - Date.now());
-      observed = result.observed;
-      if (commitMatches(result.shown, commit)) return { pass: true, observed, seconds: seconds() };
-    } catch (error) {
-      observed = `About page error: ${message(error)}`;
+  let streak = 0;
+  let probes = 0;
+  let mismatched = 0;
+  let lastMismatch = null;
+  let observed = 'no probe ran';
+  while (Date.now() < deadline) {
+    const probe = await probeOnce(browser, origin, commit, requested, deadline);
+    probes += 1;
+    observed = probe.observed;
+    if (probe.ok) {
+      streak += 1;
+    } else {
+      streak = 0;
+      mismatched += 1;
+      lastMismatch = probe.observed;
     }
-    if (Date.now() + COMMIT_POLL_INTERVAL_MS >= deadline) break;
-    await page.waitForTimeout(COMMIT_POLL_INTERVAL_MS);
+    if (streak >= STABLE_PROBES) return { pass: true, observed, seconds: seconds(), probes, mismatched };
+    if (Date.now() + PROBE_INTERVAL_MS >= deadline) break;
+    await sleep(PROBE_INTERVAL_MS);
   }
-  return { pass: false, observed: `${observed} after ${COMMIT_POLL_TIMEOUT_MS / 1000} s`, seconds: seconds() };
+  const last = lastMismatch && lastMismatch !== observed ? `last probe: ${observed}; last mismatch: ${lastMismatch}` : `last probe: ${observed}`;
+  return {
+    pass: false,
+    observed: `${last}; streak ${streak} of ${STABLE_PROBES}, ${mismatched} of ${probes} probes mismatched within ${COMMIT_POLL_TIMEOUT_MS / 1000} s`,
+    seconds: seconds(),
+    probes,
+    mismatched
+  };
 }
 
 /** The "about commit" step: the wait result plus one confirming load in the checked context. */
 async function aboutStep(page, origin, commit, wait) {
   const url = new URL('/about', `${origin}/`).href;
-  const expected = `build commit ${commit} or a prefix of it with at least ${MIN_COMMIT_PREFIX} characters (within ${COMMIT_POLL_TIMEOUT_MS / 1000} s)`;
+  const expected = `build commit ${commit} or a prefix of it with at least ${MIN_COMMIT_PREFIX} characters, served on ${STABILITY} (within ${COMMIT_POLL_TIMEOUT_MS / 1000} s)`;
   if (!wait.pass) return { step: 'about commit', url, expected, observed: wait.observed, pass: false };
   try {
     const { shown, observed } = await readAboutCommit(page, url, UI_STEP_TIMEOUT_MS);
@@ -125,8 +217,8 @@ async function aboutStep(page, origin, commit, wait) {
       url,
       expected,
       observed: pass
-        ? `${observed} (served after ${wait.seconds} s; confirmed in a fresh profile)`
-        : `${wait.observed} after ${wait.seconds} s, then ${observed} in a fresh profile`,
+        ? `${observed} (stable on ${STABLE_PROBES} consecutive probes after ${wait.seconds} s; confirmed in a fresh profile)`
+        : `${wait.observed} stable after ${wait.seconds} s, then ${observed} in a fresh profile`,
       pass
     };
   } catch (error) {
@@ -198,23 +290,6 @@ async function reviewHistoryStep(page, origin, reviewHref) {
   }
 }
 
-/**
- * Step 1: waits in its own Chromium context until /about shows the expected commit.
- * Request origins are recorded into `requested`; response headers are not checked here.
- */
-async function waitForDeployment(browser, origin, commit, requested) {
-  const url = new URL('/about', `${origin}/`).href;
-  const context = await browser.newContext();
-  try {
-    context.on('request', (request) => requested.push(request.url()));
-    return await waitForCommit(await context.newPage(), url, commit);
-  } catch (error) {
-    return { pass: false, observed: `About page error: ${message(error)}`, seconds: '0.0' };
-  } finally {
-    await context.close().catch(() => {});
-  }
-}
-
 /** Step 3: the checked browser session in a fresh context. */
 async function browserSteps(browser, origin, commit, wait, requested) {
   const results = [];
@@ -239,10 +314,17 @@ async function browserSteps(browser, origin, commit, wait, requested) {
     const page = await context.newPage();
 
     results.push(await aboutStep(page, origin, commit, wait));
-    const { result, reviewHref } = await playStep(page, origin);
-    results.push(result);
-    if (reviewHref) results.push(await reviewHistoryStep(page, origin, reviewHref));
-    else results.push({ step: 'review matches history', url: origin, expected: 'a completed hand to review', observed: 'skipped: no hand completed', pass: false });
+    if (wait.pass) {
+      const { result, reviewHref } = await playStep(page, origin);
+      results.push(result);
+      if (reviewHref) results.push(await reviewHistoryStep(page, origin, reviewHref));
+      else results.push({ step: 'review matches history', url: origin, expected: 'a completed hand to review', observed: 'skipped: no hand completed', pass: false });
+    } else {
+      // A hand played against an unconfirmed build says nothing about the Candidate.
+      const skipped = `skipped: build commit ${commit} was not served on ${STABILITY}`;
+      results.push({ step: 'play hand', url: new URL('/', `${origin}/`).href, expected: `one hand completes (showdown or fold) within ${HAND_TIMEOUT_MS / 1000} s`, observed: skipped, pass: false });
+      results.push({ step: 'review matches history', url: origin, expected: 'a completed hand to review', observed: skipped, pass: false });
+    }
 
     await Promise.allSettled(pendingHeaders);
     await context.close();
@@ -300,13 +382,15 @@ async function main() {
     report({ step: 'browser', url: origin, expected: 'Chromium runs the browser steps', observed: message(error), pass: false });
   }
   try {
-    // Step 1: wait until the edge serves the expected build (no checks recorded yet).
+    // Step 1: wait until the edge serves the expected build stably (no checks recorded yet).
     const wait = browser
       ? await waitForDeployment(browser, origin, commit, requested)
-      : { pass: false, observed: 'Chromium unavailable', seconds: '0.0' };
-    console.log(`smoke:live: ${wait.pass ? `expected build served after ${wait.seconds} s` : `expected build not confirmed (${wait.observed})`}`);
+      : { pass: false, observed: 'Chromium unavailable', seconds: '0.0', probes: 0, mismatched: 0 };
+    console.log(`smoke:live: ${wait.pass
+      ? `expected build served after ${wait.seconds} s: stable on ${STABILITY} (${wait.mismatched} of ${wait.probes} probes mismatched)`
+      : `expected build not confirmed (${wait.observed})`}`);
     // Step 2: strict, single direct requests.
-    for (const pathname of SMOKE_PATHS) report(await fetchStep(origin, pathname));
+    for (const pathname of SMOKE_PATHS) report(await fetchStep(origin, pathname, commit));
     // Step 3: strict browser session.
     const browserResults = browser
       ? await browserSteps(browser, origin, commit, wait, requested)

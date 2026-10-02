@@ -5,15 +5,19 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   commitMatches,
+  embeddedCommits,
+  entryBuildCommit,
   entryScript,
   exitCode,
   foreignOrigins,
   formatResult,
   headerProblems,
+  isJavaScriptContentType,
   pageProblems,
   parseArgs,
   parseBuildCommit,
-  parseReviewResult
+  parseReviewResult,
+  scriptProblems
 } from './smoke-live-lib.mjs';
 
 const SITE = 'https://poker.example';
@@ -121,6 +125,60 @@ test('commitMatches rejects short prefixes, mismatches, non-prefixes and missing
   assert.equal(commitMatches('', SHA), false);
   assert.equal(commitMatches(null, SHA), false);
   assert.equal(commitMatches('unknown', SHA), false);
+});
+
+// Entry script build commit (Req 12.1, 12.4): the shell must belong to the expected build
+
+const OLD_SHA = '9d15c68115aef6a486bc4f6ba36e649a4280b5bf';
+const chunk = (sha) => `const a="0.1.0-rc.1",b="${sha}",c="production";export{a,b,c};`;
+
+test('embeddedCommits finds standalone 40-hex tokens only, lower-cased and unique', () => {
+  assert.deepEqual(embeddedCommits(chunk(SHA) + chunk(SHA.toUpperCase())), [SHA]);
+  assert.deepEqual(embeddedCommits(`x${SHA}`), []);
+  assert.deepEqual(embeddedCommits(`"${SHA}abcd"`), []);
+  assert.deepEqual(embeddedCommits(`"${'a'.repeat(64)}"`), []);
+  assert.deepEqual(embeddedCommits(`${chunk(OLD_SHA)}${chunk(SHA)}`), [OLD_SHA, SHA]);
+  assert.deepEqual(embeddedCommits(''), []);
+});
+
+test('entryBuildCommit matches the full SHA or a 7+ character prefix of the embedded SHA', () => {
+  assert.deepEqual(entryBuildCommit(chunk(SHA), SHA), { commit: SHA, problem: null });
+  assert.deepEqual(entryBuildCommit(chunk(SHA), SHA.slice(0, 7).toUpperCase()), { commit: SHA, problem: null });
+  assert.deepEqual(entryBuildCommit(`${chunk('f'.repeat(40))}${chunk(SHA)}`, SHA), { commit: SHA, problem: null });
+  assert.deepEqual(entryBuildCommit(chunk(SHA.slice(0, 12)), SHA.slice(0, 7)), { commit: SHA.slice(0, 12), problem: null });
+});
+
+test('entryBuildCommit rejects a shell from another build, a missing commit and ambiguity', () => {
+  assert.deepEqual(entryBuildCommit(chunk(OLD_SHA), SHA), { commit: null, problem: `embeds build commit ${OLD_SHA}, expected ${SHA}` });
+  // The expected string inside an unrelated SHA does not count.
+  assert.equal(entryBuildCommit(chunk(`ffff${SHA.slice(0, 36)}`), SHA.slice(0, 7)).commit, null);
+  assert.deepEqual(entryBuildCommit('export{};', SHA), { commit: null, problem: `contains no build commit ${SHA}` });
+  assert.deepEqual(entryBuildCommit('<!doctype html><title>app</title>', SHA.slice(0, 7)), { commit: null, problem: `contains no build commit ${SHA.slice(0, 7)}` });
+  const twin = `${SHA.slice(0, 7)}${'0'.repeat(33)}`;
+  assert.match(entryBuildCommit(`${chunk(SHA)}${chunk(twin)}`, SHA.slice(0, 7)).problem, /several commits/);
+  assert.match(entryBuildCommit(chunk(SHA), 'zz').problem, /invalid expected commit/);
+});
+
+test('scriptProblems requires 200, a JavaScript MIME type, nosniff, no-referrer and the commit', () => {
+  const jsHeaders = { ...BASE_HEADERS, 'Content-Type': 'text/javascript; charset=utf-8' };
+  assert.deepEqual(scriptProblems({ status: 200, headers: jsHeaders, body: chunk(SHA), commit: SHA }), { problems: [], commit: SHA });
+  assert.deepEqual(scriptProblems({ status: 200, headers: { ...jsHeaders, 'Content-Type': 'application/javascript' }, body: chunk(SHA), commit: SHA }).problems, []);
+  // The edge answered an old entry path with the new build's HTML fallback.
+  assert.deepEqual(scriptProblems({ status: 200, headers: HTML_HEADERS, body: GOOD_HTML, commit: SHA }), {
+    problems: ['content-type "text/html; charset=utf-8", expected JavaScript', `contains no build commit ${SHA}`],
+    commit: null
+  });
+  assert.deepEqual(scriptProblems({ status: 404, headers: { 'Content-Type': 'text/javascript' }, body: chunk(OLD_SHA), commit: SHA }), {
+    problems: [
+      'status 404, expected 200',
+      'missing X-Content-Type-Options (expected "nosniff")',
+      'missing Referrer-Policy (expected "no-referrer")',
+      `embeds build commit ${OLD_SHA}, expected ${SHA}`
+    ],
+    commit: null
+  });
+  assert.equal(isJavaScriptContentType('text/html'), false);
+  assert.equal(isJavaScriptContentType(undefined), false);
 });
 
 test('parseBuildCommit and parseReviewResult read the displayed values', () => {
