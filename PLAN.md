@@ -1,6 +1,6 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` is superseded: its Deploy_Workflow run deployed it (Cloudflare version `34af887f-ab67-4cc0-9588-b6458c59638e`), but the live smoke step in that run failed 8 of 12 steps. The smoke check started before Cloudflare served the new Worker, so its first requests got bare 404s. The Live_Site currently serves `9d15c68` and works. The new Candidate_Commit makes the smoke check wait for the deployed commit before its strict checks (see [Superseded candidates](#superseded-candidates)). Its Release_Checks, deployment, live smoke and prerelease are recorded below as they happen. Earlier Candidate `911e9e9` is also superseded.
+Updated 2026-10-01 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values. Release state: not delivered. Candidate_Commit `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` is superseded: its Deploy_Workflow run deployed it (Cloudflare version `34af887f-ab67-4cc0-9588-b6458c59638e`), but the live smoke step in that run failed 8 of 12 steps. The smoke check started before Cloudflare served the new Worker, so its first requests got bare 404s. The Live_Site currently serves `9d15c68` and works. The new Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` makes the smoke check wait for the deployed commit before its strict checks (see [Superseded candidates](#superseded-candidates)). It passed every local Release_Check and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01. Its deployment, live smoke and prerelease have not run yet. Earlier Candidate `911e9e9` is also superseded.
 
 ## Goal and deadline
 
@@ -33,44 +33,47 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 
 - Status: in progress (2026-10-01)
 - Gate: guest-only app/deployment path, one opponent, inactive promises removed, no Supabase build dependency.
-- Commit: `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (Candidate_Commit on `release/guest-mvp`; supersedes `911e9e9`).
+- Commit: `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (Candidate_Commit on `release/guest-mvp`; supersedes `9d15c68` and `911e9e9`).
 - Evidence (2026-10-01, clean tree at the Candidate_Commit, see [Candidate_Commit Release_Checks](#candidate_commit-release_checks)):
   - lint: pass
   - typecheck: pass
   - production build: pass
   - check:dist: pass (entry chunk 467,530 bytes ≤ 500,000)
-  - Deploy_Workflow run on `9d15c68`: not run (Owner dispatch pending; the run on superseded `911e9e9` failed, see MVP-4)
+  - Deploy_Workflow run on `d4f22b9`: not run (Owner dispatch pending; the run on superseded `9d15c68` deployed but failed the live smoke, see MVP-4)
 
 ### MVP-2 Reliable play/storage
 
 - Status: in progress (2026-10-01)
 - Gate: betting/showdown and three-hand browser journeys; synchronous action guard; tab takeover reload; cancellation/retry; correct saved actions/session continuity.
-- Commit: `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (Candidate_Commit).
+- Commit: `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (Candidate_Commit).
 - Evidence (2026-10-01, Candidate_Commit):
   - Vitest: pass, 21 files / 75 passed / 0 failed
   - rules fixtures (`pnpm test:rules`, `packages/poker`): pass, 4 files / 30 passed / 0 failed (incl. `rules-fixtures.test.ts` 8/8)
-  - three-browser suite (`pnpm test:e2e:release`, retries 0): pass, 105 passed / 0 failed (Chromium 35, Firefox 35, WebKit 35)
+  - three-browser suite (`pnpm test:e2e:release`, retries 0): pass, 106 passed / 0 failed / 2 skipped (Chromium 36, Firefox 35, WebKit 35; the new Chromium-only smoke regression test is skipped by design in Firefox and WebKit)
   - PokerKit reference (`tools/reference/pokerkit_rules.py`, pokerkit 0.7.6): pass, 7 rules fixtures compared / 0 mismatches
 
 ### MVP-3 Review and data
 
 - Status: in progress (2026-10-01)
 - Gate: saved visible state/pot odds, missing/error states, history/export/deletion, current screenshots/copy.
-- Commit: `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (Candidate_Commit).
+- Commit: `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (Candidate_Commit).
 - Evidence (2026-10-01, Candidate_Commit):
   - Vitest: pass, 75 passed / 0 failed
-  - three-browser suite (review, missing review, export, deletion, keyboard, 390px): pass, 105 passed / 0 failed
+  - three-browser suite (review, missing review, export, deletion, keyboard, 390px): pass, 106 passed / 0 failed / 2 skipped
   - wide-font 390 px probe (ad-hoc script outside the repo against the Candidate `dist`, all 9 routes of the 390 px test, Chromium/Firefox/WebKit, default fonts and forced `"DejaVu Sans", Verdana, sans-serif`, at 390 and 320 px): pass, 108 of 108 measurements within the viewport width (maximum scrollWidth 390 at 390 px and 320 at 320 px)
-  - screenshots: unchanged screens, no recapture needed for `9d15c68`. The fix only touches `.prose`, which is used only on About and is not in a screenshot, and a `max-width: 359px` rule. The screenshots are 1440 and 390 px wide. The current images were captured from the `911e9e9` `dist` on 2026-10-01 with Chromium via `tools/serve-dist.mjs`: `table-desktop.png` 1440x1288, `review-desktop.png` 1440x931, `table-mobile.png` 390x1421. They show no deferred-feature UI.
+  - screenshots: unchanged screens, no recapture needed for `d4f22b9`, which changes no app source (only `tools/`, an e2e test, `README.md` and `PLAN.md`). The same was true for `9d15c68`. Its fix only touches `.prose`, which is used only on About and is not in a screenshot, and a `max-width: 359px` rule. The screenshots are 1440 and 390 px wide. The current images were captured from the `911e9e9` `dist` on 2026-10-01 with Chromium via `tools/serve-dist.mjs`: `table-desktop.png` 1440x1288, `review-desktop.png` 1440x931, `table-mobile.png` 390x1421. They show no deferred-feature UI.
 
 ### MVP-4 Publish and verify
 
 - Status: in progress (2026-10-01)
 - Gate: candidate checks, real Cloudflare URL, built/live routes and guest smoke, tested commit/tag/limitations recorded.
-- Commit: `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (Candidate_Commit; supersedes `911e9e9`).
+- Commit: `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (Candidate_Commit; supersedes `9d15c68` and `911e9e9`).
 - Evidence:
-  - local Release_Checks on the clean Candidate_Commit `9d15c68`: pass (2026-10-01; lint, typecheck, Vitest, test:tools, rules fixtures, build, check:dist, three-browser suite 105/105, wide-font 390 px probe 108/108)
-  - PokerKit reference on the Candidate_Commit `9d15c68`: pass (2026-10-01; 7 rules fixtures compared, 0 mismatches)
+  - local Release_Checks on the clean Candidate_Commit `d4f22b9`: pass (2026-10-01; lint, typecheck, Vitest 75, test:tools 30, rules fixtures 30, build, check:dist, three-browser suite 106 passed / 2 skipped / 0 failed, wide-font 390 px probe 108/108, PokerKit 7 fixtures / 0 mismatches)
+  - local smoke of the `d4f22b9` `dist` (2026-10-01): `pnpm smoke:live --url http://127.0.0.1:4185 --commit d4f22b9f8f0af432b99aa192f90fa7819c3f3189` against `tools/serve-dist.mjs` printed `PASS all 12 steps`. The e2e regression run against `--unrouted-ms 8000` also passed 12 of 12. Localhost does not count as the live smoke.
+  - new smoke script against the Live_Site, which still serves `9d15c68` (2026-10-01, local): `--commit 9d15c68115aef6a486bc4f6ba36e649a4280b5bf` printed `PASS all 12 steps`, with the expected build served after 0.6 s. This confirms that the new ordering passes on real Cloudflare. It is not the smoke of the new Candidate.
+  - local Release_Checks on superseded `9d15c68`: pass (2026-10-01; lint, typecheck, Vitest, test:tools, rules fixtures, build, check:dist, three-browser suite 105/105, wide-font 390 px probe 108/108)
+  - PokerKit reference on superseded `9d15c68`: pass (2026-10-01; 7 rules fixtures compared, 0 mismatches)
   - release branch push for `9d15c68`: done (2026-10-01). `git push origin release/guest-mvp` moved the remote from `4e2b014` to `6821b1aefdb2086d137962f97303665046504780`, which is the Candidate plus evidence commit `6821b1a`. The secret re-check of both new commits found no credential file names and no key or token content. `deploy/9d15c68` was created without checkout and pushed. `git ls-remote origin refs/heads/deploy/9d15c68` returned `9d15c68115aef6a486bc4f6ba36e649a4280b5bf`, which equals the Candidate. `deploy/911e9e9` was left unchanged at `911e9e9`.
   - Deploy_Workflow on Candidate `9d15c68`: fail (2026-10-01; run https://github.com/martonkadi/poker-practice/actions/runs/36940616645/job/110630998860, dispatched by the Owner on `deploy/9d15c68`). Every step before deploy passed: `pnpm check`, the three-browser suite and PokerKit. "Deploy static assets" (`wrangler deploy`) succeeded with `Current Version ID: 34af887f-ab67-4cc0-9588-b6458c59638e`. This was the first deploy of the `poker-practice` Worker, because the `911e9e9` run stopped before deploy. "Live smoke check (Chromium)" then failed 8 of 12 steps:
     - All 7 fetch steps (`/`, `/play`, `/history`, `/settings`, `/about`, `/review/smoke-unknown-hand-id`, `/smoke-no-such-page`) observed: `status 404, expected 200; no same-origin <script type="module" src> entry script; missing X-Content-Type-Options (expected "nosniff"); Referrer-Policy is "same-origin", expected "no-referrer"; missing Content-Security-Policy`.
@@ -98,24 +101,27 @@ Smoke the live URL and direct routes. Verify no auth/cloud calls or privileged c
 
 ### Candidate_Commit Release_Checks
 
-Candidate_Commit `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` on `release/guest-mvp`, run locally on 2026-10-01 (Windows, Node 24.20.0, pnpm 12.6.0) from a clean `git status`. The only uncommitted files were the two Kiro spec tracking files under `.kiro/specs/`, which are not part of the build. Build env matched `deploy.yml`: `VITE_SUPABASE_URL=''`, `VITE_SUPABASE_PUBLISHABLE_KEY=''`, `VITE_APP_ENV=production`, `VITE_GIT_COMMIT=<Candidate SHA>` (the SHA is embedded in the entry chunk). `pnpm check` exited 0; the browser suite then ran against that same `dist` with no rebuild and retries 0. The tree was still clean afterwards.
+Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` on `release/guest-mvp`, run locally on 2026-10-01 (Windows, Node 24.20.0, pnpm 12.6.0) from a clean `git status`. The only uncommitted files were the two Kiro spec tracking files under `.kiro/specs/`, which are not part of the build. `dist/` was deleted first. Build env matched `deploy.yml`: `VITE_SUPABASE_URL=''`, `VITE_SUPABASE_PUBLISHABLE_KEY=''`, `VITE_APP_ENV=production`, `VITE_GIT_COMMIT=<Candidate SHA>` (the SHA is embedded in the entry chunk). `pnpm check` exited 0. The browser suite, the wide-font probe and the local smoke then ran against that same `dist`, with no rebuild and retries 0. The tree was still clean afterwards.
 
 | Check | Command | Result | Passed | Failed |
 | --- | --- | --- | --- | --- |
 | lint | `pnpm lint` (in `pnpm check`) | pass | n/a | 0 errors |
 | typecheck | `pnpm typecheck` (in `pnpm check`) | pass | n/a | 0 errors |
 | Vitest (unit/integration, property and rules tests) | `pnpm test` (in `pnpm check`) | pass | 75 (21 files) | 0 |
-| tool tests | `pnpm test:tools` (in `pnpm check`) | pass | 29 | 0 |
+| tool tests | `pnpm test:tools` (in `pnpm check`) | pass | 30 (includes the new `--unrouted-ms` test) | 0 |
 | rules fixtures | `pnpm test:rules` (`packages/poker`) | pass | 30 (4 files; `rules-fixtures.test.ts` 8) | 0 |
 | production build | `pnpm build` (in `pnpm check`) | pass | n/a | n/a |
 | check:dist | `pnpm check:dist` (in `pnpm check`) | pass (entry-size, cloud-code, test-hook, inline-markup, headers) | n/a | n/a |
-| three-browser suite | `pnpm test:e2e:release` (retries 0) | pass | 105 (Chromium 35, Firefox 35, WebKit 35) | 0 |
+| three-browser suite | `pnpm test:e2e:release` (retries 0) | pass | 106 (Chromium 36, Firefox 35, WebKit 35); 2 skipped by design (the Chromium-only `smoke-live.spec.ts` in Firefox and WebKit) | 0 |
 | PokerKit reference | `python tools/reference/pokerkit_rules.py` | pass (exit 0) | 7 rules fixtures compared (plus built-in blind/limp/min-raise/fold/all-in/side-pot asserts) | 0 mismatches |
 | wide-font 390 px probe (ad-hoc, outside the repo) | Playwright script against the same `dist`, forced `"DejaVu Sans", Verdana, sans-serif` and default fonts, 390 and 320 px | pass | 108 measurements (9 routes × 3 browsers × 2 fonts × 2 widths) | 0 |
+| local smoke (not the live smoke) | `pnpm smoke:live --url http://127.0.0.1:4185 --commit <Candidate SHA>` against `tools/serve-dist.mjs` on the same `dist` | pass | 12 steps | 0 |
 
-Entry chunk: `/assets/index-CqHHDFVU.js`, 467,530 bytes (limit 500,000). It embeds the full Candidate SHA.
+Entry chunk: `/assets/index-BPXF_Fko.js`, 467,530 bytes (limit 500,000). It embeds the full Candidate SHA.
 
-PokerKit reference: run 2026-10-01 at Candidate_Commit `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (clean tree) with Python 3.14.7 and `pokerkit==0.7.6`, in the existing virtualenv outside the repository (`%LOCALAPPDATA%\poker-pokerkit-venv`, installed via `python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt`). Output: `7 rules fixtures compared, 0 mismatches`.
+PokerKit reference: run 2026-10-01 at Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (clean tree) with Python 3.14.7 and `pokerkit==0.7.6`, in the existing virtualenv outside the repository (`%LOCALAPPDATA%\poker-pokerkit-venv`, installed via `python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt`). Output: `7 rules fixtures compared, 0 mismatches`.
+
+Superseded results for `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (2026-10-01): the same local checks passed (tool tests 29, three-browser suite 105/105, probe 108/108), entry chunk `/assets/index-CqHHDFVU.js` 467,530 bytes, PokerKit 7 fixtures / 0 mismatches. Its Deploy_Workflow deployed it and then failed the live smoke (see [Superseded candidates](#superseded-candidates)).
 
 Superseded results for `911e9e90d398e4b8a7f290423434e05edea973ff` (2026-10-01): the same local checks passed on Windows, entry chunk `/assets/index-B-oJAD1B.js` 467,529 bytes, and PokerKit found 7 fixtures and 0 mismatches. Its Deploy_Workflow browser suite then failed on Linux (see [Superseded candidates](#superseded-candidates)).
 
