@@ -1,10 +1,12 @@
 name: CI
 on:
   pull_request:
+  # main is the only release branch. This run is also the GitHub Actions
+  # fallback for Release_Checks that cannot run locally; record its URL
+  # against the same SHA.
   push:
-    # release/guest-mvp is the GitHub Actions fallback for Release_Checks that
-    # cannot run locally (Req 10.7). Record the run URL against the same SHA.
-    branches: [main, release/guest-mvp]
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -44,8 +46,8 @@ jobs:
       - run: python tools/reference/pokerkit_rules.py
   database:
     # Cloud sync is deferred for the guest MVP, so its local Supabase checks are
-    # not Release_Checks and do not run on the release branch.
-    if: github.ref != 'refs/heads/release/guest-mvp'
+    # not Release_Checks. They run only when this workflow is started manually.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

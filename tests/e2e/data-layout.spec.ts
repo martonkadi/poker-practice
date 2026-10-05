@@ -93,7 +93,7 @@ test('export with no saved hands downloads an empty valid archive', async ({ pag
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   const { name, archive } = await downloadExport(page);
-  expect(name).toMatch(/^poker-practice-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(name).toMatch(/^headsup-\d{4}-\d{2}-\d{2}\.json$/);
   expect(archive.format).toBe('poker-practice');
   expect(archive.schemaVersion).toBe(1);
   expect(archive.hands).toEqual([]);

@@ -31,7 +31,7 @@ export function Settings() {
       url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `poker-practice-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `headsup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       const done = url;
       setTimeout(() => URL.revokeObjectURL(done), 1000);

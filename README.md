@@ -1,6 +1,6 @@
-# Poker Practice
+# HeadsUp
 
-A guest-only practice site for heads-up no-limit Texas Hold’em. You play complete 100bb hands against one experimental opponent, `standard-v1`, and review each of your saved decisions with the visible cards, the pot and exact pot odds. Hands are saved in this browser. Practice chips have no cash value.
+HeadsUp is a guest-only practice site for heads-up no-limit Texas Hold’em. You play complete 100bb hands against one experimental opponent, `standard-v1`, and review each of your saved decisions with the visible cards, the pot and exact pot odds. Hands are saved in this browser. Practice chips have no cash value.
 
 The opponent is not GTO and its strength has not been measured. The review shows the price of a call; it does not grade decisions or calculate EV loss.
 
