@@ -55,7 +55,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 
 ### MVP-3 Review and data
 
-- Status: in progress (2026-10-01). Every check below passed at `3b431ed` except the screenshot check, which has not run at the Candidate build.
+- Status: passed (2026-10-04). Every evidence check below passed at Candidate_Commit `3b431ed`, including the screenshots captured from the Candidate build on 2026-10-04. Earlier status: in progress (2026-10-01), because the screenshot check had not run at the Candidate build.
 - Gate: saved visible state/pot odds, missing/error states, history/export/deletion, current screenshots/copy.
 - Commit: `3b431ed369705604feb3602d268a98aaffcaedd1` (Candidate_Commit).
 - Evidence (2026-10-01, Candidate_Commit):
@@ -66,6 +66,7 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
     - Why the earlier "unchanged screens" reasoning is not counted as a pass (re-judged 2026-10-01): the release changes did alter these screens, which is why task 15.3 replaced them. Req 13.6 then requires the replacement to be "a capture from the Candidate_Commit production build", and the evidence commit rule says screenshots are captured from the Candidate_Commit's `dist`. `911e9e9` is not the Candidate.
     - What differs: `git diff 911e9e9 3b431ed -- apps packages` changes only `apps/web/src/styles.module.css` (from `9d15c68`): `overflow-wrap:anywhere` on `.prose`, which only About uses, and `@media(max-width:359px){.betRow{flex-wrap:wrap}}`. The Play and Review screens at 1440 and 390 px should render the same. The build commit is shown only on About. This is an inference from the diff; no capture or pixel comparison was made from the `3b431ed` `dist`.
     - To close: capture the three images from the `3b431ed` `dist` (built with the Candidate's `VITE_GIT_COMMIT`) and commit them, or a recorded byte or pixel match, as an evidence commit. This does not change the Candidate_Commit or the tag.
+  - screenshots captured from the Candidate_Commit build (Req 13.6, task 15.3), re-run 2026-10-04: pass. The tree at `03d0046` differs from `3b431ed` only in `PLAN.md` (`git diff --quiet 3b431ed 03d0046 -- . ':!PLAN.md' ':!docs/screenshots'` exited 0). `dist/` was deleted and rebuilt with the `deploy.yml` env (`VITE_SUPABASE_URL=''`, `VITE_SUPABASE_PUBLISHABLE_KEY=''`, `VITE_APP_ENV=production`, `VITE_GIT_COMMIT=3b431ed369705604feb3602d268a98aaffcaedd1`). `pnpm check:dist` passed, and the entry chunk is `/assets/index-Zh9Q6LmR.js` at 467,530 bytes, the same file name and size as the Candidate build that was deployed (the name is a content hash, so this is the Candidate artifact). `CAPTURE_SCREENSHOTS=1 pnpm exec playwright test tests/e2e/guest.spec.ts --project=chromium` against that `dist` via `tools/serve-dist.mjs` passed 12 of 12 and wrote `table-desktop.png` 1440x1288, `review-desktop.png` 1440x931 and `table-mobile.png` 390x1421. The agent viewed all three: the practice table with the `standard-v1 · experimental` label and the review with pot odds, and no deferred-feature UI (no sign-in, sync, import, difficulty, equity or grading). Evidence commit: the commit that adds this bullet.
 
 ### MVP-4 Publish and verify
 
