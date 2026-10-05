@@ -144,8 +144,9 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 
 - Status: in progress (2026-10-04).
 - Gate: the visible name is HeadsUp on every route (header link, document title), in `/license.txt` and `LICENSE`, in the export download name `headsup-<date>.json` and in the `README.md` title and intro; no legacy name in any built file; internal identifiers unchanged; every rc.1 Release_Check passes again at the rc.2 Candidate; deployed from `main` with the live smoke and a live brand check; tag `v0.1.0-rc.2` and a prerelease that is not latest; only `main` left on GitHub.
-- Commit: not yet (the rc.2 Candidate_Commit is recorded here once it exists).
-- Evidence: none yet.
+- Commit: `ef9c9081ea1077ed8b14928ce9103c9b789d7b71` (rc.2 Candidate_Commit on `main`).
+- Evidence:
+  - local Release_Checks on the clean Candidate: pass (2026-10-04; lint, typecheck, Vitest 75, test:tools 36, build, check:dist, rules fixtures 30, three-browser suite 114 passed / 6 skipped / 0 failed, PokerKit 7 fixtures / 0 mismatches, wide-font probe 108/108, 0 legacy-name matches in `dist`; see [rc.2 Candidate_Commit Release_Checks](#rc2-candidate_commit-release_checks))
 
 ## Release checks
 
@@ -182,6 +183,30 @@ Superseded results for `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` (2026-10-01): 
 Superseded results for `9d15c68115aef6a486bc4f6ba36e649a4280b5bf` (2026-10-01): the same local checks passed (tool tests 29, three-browser suite 105/105, probe 108/108), entry chunk `/assets/index-CqHHDFVU.js` 467,530 bytes, PokerKit 7 fixtures / 0 mismatches. Its Deploy_Workflow deployed it and then failed the live smoke (see [Superseded candidates](#superseded-candidates)).
 
 Superseded results for `911e9e90d398e4b8a7f290423434e05edea973ff` (2026-10-01): the same local checks passed on Windows, entry chunk `/assets/index-B-oJAD1B.js` 467,529 bytes, and PokerKit found 7 fixtures and 0 mismatches. Its Deploy_Workflow browser suite then failed on Linux (see [Superseded candidates](#superseded-candidates)).
+
+### rc.2 Candidate_Commit Release_Checks
+
+Candidate_Commit `ef9c9081ea1077ed8b14928ce9103c9b789d7b71` on `main`, run locally on 2026-10-04 (Windows, Node 24.20.0, pnpm 12.6.0) from a clean `git status` (only `.kiro/specs/**` uncommitted, not part of the build). `dist/` was deleted first. Build env matched `deploy.yml`: `VITE_SUPABASE_URL=''`, `VITE_SUPABASE_PUBLISHABLE_KEY=''`, `VITE_APP_ENV=production`, `VITE_GIT_COMMIT=ef9c9081ea1077ed8b14928ce9103c9b789d7b71`. The browser suite, PokerKit, the wide-font probe and the `dist` search ran against that same `dist`, with no rebuild and retries 0. The tree was still clean afterwards.
+
+Changed paths against rc.1 Candidate `3b431ed`: `.github/workflows/ci.yml`, `LICENSE`, `PLAN.md`, `README.md`, `apps/web/index.html`, `apps/web/public/license.txt`, `apps/web/src/components/Shell.tsx`, `apps/web/src/pages/Settings.tsx`, `package.json`, `tests/e2e/brand.spec.ts` (new), `tests/e2e/data-layout.spec.ts` (filename regex only), plus the rc.1 evidence screenshots. All are in the allowlist. `packages/**`, `tools/**`, `deploy.yml` and `wrangler.jsonc` are unchanged.
+
+| Check | Command | Result | Passed | Failed |
+| --- | --- | --- | --- | --- |
+| lint | `pnpm lint` (in `pnpm check`) | pass | n/a | 0 errors |
+| typecheck | `pnpm typecheck` (in `pnpm check`) | pass | n/a | 0 errors |
+| Vitest | `pnpm test` (in `pnpm check`) | pass | 75 (21 files) | 0 |
+| tool tests | `pnpm test:tools` (in `pnpm check`) | pass | 36 | 0 |
+| production build | `pnpm build` (in `pnpm check`) | pass | n/a | n/a |
+| check:dist | `pnpm check:dist` (in `pnpm check`) | pass (entry-size, cloud-code, test-hook, inline-markup, headers) | n/a | n/a |
+| rules fixtures | `pnpm test:rules` | pass | 30 (4 files) | 0 |
+| three-browser suite | `pnpm test:e2e:release` (retries 0) | pass | 114 (Chromium 40, Firefox 37, WebKit 37; includes the new `brand.spec.ts` 2 tests per browser); 6 skipped by design (the 3 Chromium-only `smoke-live.spec.ts` tests in Firefox and WebKit) | 0 |
+| PokerKit reference | `python tools/reference/pokerkit_rules.py` (pokerkit 0.7.6) | pass (exit 0) | 7 rules fixtures compared | 0 mismatches |
+| wide-font probe (ad-hoc, outside the repo) | `measure.mjs` with Chromium, Firefox and WebKit, default and forced `"DejaVu Sans", Verdana, sans-serif`, 390 and 320 px | pass | 108 measurements (maximum scrollWidth 390 at 390 px) | 0 |
+| legacy name in `dist` | recursive search of `dist/` for `poker\s*practice` (case-insensitive) | pass | 0 matches; `dist/index.html` has `<title>HeadsUp</title>` and `dist/license.txt` names `HeadsUp contributors` | 0 |
+
+Entry chunk: `/assets/index-L8ZoQW0V.js`, 467,516 bytes (limit 500,000). It embeds the full Candidate SHA.
+
+Brand tests were written first: before the rename, `brand.spec.ts` (both tests) and the export filename test in `data-layout.spec.ts` failed in Chromium on the old header, license line and `poker-practice-<date>.json` download name; after it, all 6 tests in the two files passed.
 
 ### Superseded candidates
 
