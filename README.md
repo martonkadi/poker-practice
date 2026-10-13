@@ -73,6 +73,6 @@ Everything you do stays in your browser's IndexedDB. The site doesn't call any o
 - [Bot policy](docs/bot-policy.md): how `standard-v1` decides
 - [Operations](docs/operations.md): costs and what to do when something breaks
 
-## License
+## Third-party code
 
-The code is [MIT licensed](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) cover the patched rules engine and the PokerKit reference.
+[Third-party notices](THIRD_PARTY_NOTICES.md) cover the patched rules engine and the PokerKit reference.
