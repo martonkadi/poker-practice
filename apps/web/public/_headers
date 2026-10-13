@@ -7,7 +7,7 @@
 
 # Plain-text files carry no scripts or styles. WebKit's built-in text viewer
 # injects inline styles that `style-src 'self'` would block, so the CSP is
-# detached here. nosniff and no-referrer still apply (Req 8.3).
+# detached here. nosniff and no-referrer still apply.
 /license.txt
   ! Content-Security-Policy
 /third-party-notices.txt

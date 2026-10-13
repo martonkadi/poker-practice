@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Live smoke check for a deployed site (Req 12).
+// Live smoke check for a deployed site.
 //
 // 1. Waits for the deployment to be served stably, for at most 90 s. Right after
 //    `wrangler deploy` returns, Cloudflare's edge can still answer with a bare 404 that is
@@ -11,21 +11,21 @@
 //    PROBE_INTERVAL_MS apart; any mismatch resets the streak. Responses seen while waiting
 //    are not header-checked; request origins are still recorded.
 // 2. Fetches each SMOKE_PATHS entry directly, once, with a 10 s timeout: HTTP 200, HTML, a
-//    same-origin entry module script, the Requirement 8 CSP, nosniff and no-referrer. Then
+//    same-origin entry module script, the site CSP, nosniff and no-referrer. Then
 //    fetches that entry script once (10 s timeout): HTTP 200, JavaScript MIME type,
 //    nosniff, no-referrer, and the expected build commit embedded in it, so a shell from
-//    an older deployment fails the step (Req 12.1, 12.4, 12.5).
+//    an older deployment fails the step.
 // 3. In a fresh Chromium context (no saved app data), records every request and response:
-//    - fails on any request to a foreign origin (Req 12.3);
+//    - fails on any request to a foreign origin;
 //    - fails on any same-origin response without nosniff/no-referrer, or an HTML
-//      response without the CSP (Req 12.5);
-//    - loads /about once and confirms the build commit again (Req 12.4);
+//      response without the CSP;
+//    - loads /about once and confirms the build commit again;
 //    - plays one hand with check/call within 120 s, opens its review and confirms the
-//      first History row is that hand with the same result (Req 12.2).
+//      first History row is that hand with the same result.
 //    If step 1 did not confirm the expected build, these steps fail without playing:
 //    a hand played against an unconfirmed build says nothing about the Candidate.
 // 4. Prints one PASS/FAIL line per step with URL, expected and observed values and exits
-//    0 only if every step passed (Req 12.6, 12.7).
+//    0 only if every step passed.
 //
 // Usage: pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit <sha>
 import path from 'node:path';
@@ -100,10 +100,10 @@ async function fetchShell(origin, pathname, commit, deadline = Infinity) {
   return shell;
 }
 
-const fetchExpected = (commit) => '200 text/html with a same-origin entry module script, Requirement 8 CSP, nosniff, no-referrer;'
+const fetchExpected = (commit) => '200 text/html with a same-origin entry module script, the site CSP, nosniff, no-referrer;'
   + ` the entry script answers 200 JavaScript with nosniff and no-referrer and embeds build commit ${commit}`;
 
-/** Step 2: direct requests without in-app navigation, plus the entry script they load (Req 12.1, 12.4, 12.5). */
+/** Step 2: direct requests without in-app navigation, plus the entry script they load. */
 async function fetchStep(origin, pathname, commit) {
   const url = new URL(pathname, `${origin}/`).href;
   const step = `fetch ${pathname}`;
@@ -167,7 +167,7 @@ async function probeOnce(browser, origin, commit, requested, deadline) {
 
 /**
  * Step 1: probes until the expected build is served on STABLE_PROBES consecutive probes, at
- * most COMMIT_POLL_TIMEOUT_MS in total (Req 12.4). Any mismatch resets the streak.
+ * most COMMIT_POLL_TIMEOUT_MS in total. Any mismatch resets the streak.
  * @returns {Promise<{ pass: boolean, observed: string, seconds: string, probes: number, mismatched: number }>}
  */
 async function waitForDeployment(browser, origin, commit, requested) {
@@ -226,7 +226,7 @@ async function aboutStep(page, origin, commit, wait) {
   }
 }
 
-/** Plays one hand with check/call until it completes (Req 12.2). */
+/** Plays one hand with check/call until it completes. */
 async function playStep(page, origin) {
   const url = new URL('/', `${origin}/`).href;
   const expected = `one hand completes (showdown or fold) within ${HAND_TIMEOUT_MS / 1000} s`;
@@ -255,7 +255,7 @@ async function playStep(page, origin) {
   }
 }
 
-/** Opens the hand's review, reads its result and compares the first History row (Req 12.2). */
+/** Opens the hand's review, reads its result and compares the first History row. */
 async function reviewHistoryStep(page, origin, reviewHref) {
   const url = new URL(reviewHref, `${origin}/`).href;
   const step = 'review matches history';
@@ -336,7 +336,7 @@ async function browserSteps(browser, origin, commit, wait, requested) {
   return results;
 }
 
-/** The two whole-run browser results: request origins (Req 12.3) and response headers (Req 12.5). */
+/** The two whole-run browser results: request origins and response headers. */
 function originAndHeaderResults(origin, requested, headerFailures, checkedResponses) {
   const results = [];
   const foreign = foreignOrigins(requested, origin);
@@ -350,7 +350,7 @@ function originAndHeaderResults(origin, requested, headerFailures, checkedRespon
   results.push({
     step: 'browser response headers',
     url: origin,
-    expected: 'every response has nosniff and no-referrer; HTML responses have the Requirement 8 CSP',
+    expected: 'every response has nosniff and no-referrer; HTML responses have the site CSP',
     observed: headerFailures.length > 0
       ? headerFailures.join('; ')
       : checkedResponses === 0 ? 'no responses received from the site' : `${checkedResponses} responses checked, headers ok`,

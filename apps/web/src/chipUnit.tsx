@@ -10,7 +10,7 @@ type AnimationSpeed = 'normal' | 'fast' | 'none';
 
 interface ChipUnitValue {
   unit: ChipUnit;
-  /** Updates the context immediately; the write runs in the background (Req 7.6). */
+  /** Updates the context immediately; the write runs in the background. */
   setUnit(unit: ChipUnit): void;
   /** Back to chips without writing, e.g. after local data was deleted. */
   resetUnit(): void;
@@ -32,7 +32,7 @@ export function ChipUnitProvider({ children }: { children: React.ReactNode }) {
   const writes = React.useRef<Promise<void>>(Promise.resolve());
 
   React.useEffect(() => {
-    // Load once, after the boot-time open. A failed store keeps chips and writes nothing (Req 7.3).
+    // Load once, after the boot-time open. A failed store keeps chips and writes nothing.
     if (!store.ready || loadStarted.current) return;
     loadStarted.current = true;
     if (store.failed) return;

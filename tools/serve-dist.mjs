@@ -10,7 +10,7 @@
 //   syntax) by request path.
 //
 // This file defines no security header values of its own. `dist/_headers` is
-// the only source of those values (Req 8.4).
+// the only source of those values.
 //
 // `--unrouted-ms <n>` emulates the window right after `wrangler deploy` returns
 // in which Cloudflare's edge does not route the hostname to the new Worker yet:
@@ -24,7 +24,7 @@
 // from <dir>, an older build with its own `_headers` file, and the others from
 // `--dir`. As on the edge, an old HTML shell then loads an entry script that the
 // new build does not have, and the reverse. After <n> ms only `--dir` answers.
-// Headers for stale responses come only from `<dir>/_headers` (Req 8.4).
+// Headers for stale responses come only from `<dir>/_headers`.
 //
 // Usage: node tools/serve-dist.mjs [--port 4173] [--host 127.0.0.1] [--dir dist] [--unrouted-ms 0]
 //        [--stale-dir <dir> --stale-ms <n>]

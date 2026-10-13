@@ -1,4 +1,4 @@
-name: Deploy guest MVP
+name: Deploy
 on:
   workflow_dispatch:
 permissions:
@@ -21,9 +21,9 @@ jobs:
       VITE_APP_ENV: production
       VITE_GIT_COMMIT: ${{ github.sha }}
     steps:
-      # Ties the run log to the Candidate_Commit (Req 11.8).
-      - name: Print candidate commit
-        run: echo "Candidate commit ${{ github.sha }}"
+      # Puts the exact commit at the top of the run log.
+      - name: Print commit
+        run: echo "Deploying commit ${{ github.sha }}"
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
@@ -37,7 +37,7 @@ jobs:
       - name: Confirm static deployment configuration
         run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
       # lint, typecheck, test, test:tools, build, check:dist (tools/run-check.mjs).
-      - name: Release checks and production build
+      - name: Checks and production build
         run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       # Serves the existing dist/ via tools/serve-dist.mjs; never rebuilds.

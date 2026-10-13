@@ -11,7 +11,7 @@ import { reviewView } from '../reviewView';
 import styles from '../styles.module.css';
 
 // Review is part of the entry chunk. It must not import @poker/poker (and with it
-// poker-engine-ts); that stays in the lazy Play chunk (Req 9.5).
+// poker-engine-ts); that stays in the lazy Play chunk.
 export function Review() {
   const { handId } = useParams();
   const [hand, setHand] = React.useState<HandRecord | null>();

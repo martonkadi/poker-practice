@@ -14,7 +14,7 @@ import styles from './styles.module.css';
 
 // Play is a separate chunk: it pulls in the rules engine (poker-engine-ts) through
 // @poker/poker, useGame, session and workerClient. Keeping it lazy holds the entry
-// chunk under the 500,000-byte limit (Req 9.5).
+// chunk under the 500,000-byte limit.
 const Play = React.lazy(() => import('./pages/Play'));
 function PlayRoute() {
   return <React.Suspense fallback={<div className={styles.page}><p role="status">Loading table…</p></div>}><Play /></React.Suspense>;

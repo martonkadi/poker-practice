@@ -1,9 +1,7 @@
 name: CI
 on:
   pull_request:
-  # main is the only release branch. This run is also the GitHub Actions
-  # fallback for Release_Checks that cannot run locally; record its URL
-  # against the same SHA.
+  # main is the only branch, and deploys run from it.
   push:
     branches: [main]
   workflow_dispatch:
@@ -16,8 +14,8 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    # Same guest-only build inputs as deploy.yml, so this run checks the
-    # artifact the Deploy_Workflow would build from the same commit.
+    # Same build settings as deploy.yml, so this checks the build a deploy
+    # of this commit would ship.
     env:
       VITE_SUPABASE_URL: ''
       VITE_SUPABASE_PUBLISHABLE_KEY: ''
@@ -40,13 +38,13 @@ jobs:
       - run: pnpm check
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       # Chromium, Firefox and WebKit against the dist built above (no rebuild).
-      # playwright.config.ts sets retries: 0 and forbidOnly: true (Req 10.6).
+      # playwright.config.ts sets retries: 0 and forbidOnly: true.
       - run: pnpm test:e2e:release
       - run: python -m pip install --require-hashes --no-deps -r tools/reference/requirements.txt
       - run: python tools/reference/pokerkit_rules.py
   database:
-    # Cloud sync is deferred for the guest MVP, so its local Supabase checks are
-    # not Release_Checks. They run only when this workflow is started manually.
+    # Tests for the parked Supabase cloud code. The site doesn't use it, so
+    # this job runs only when the workflow is started manually.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 25

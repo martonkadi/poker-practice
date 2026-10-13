@@ -1,4 +1,4 @@
-// Resilience scenarios for the release browser suite (Req 2.2, 2.4, 2.5, 10.4):
+// Resilience scenarios for the release browser suite:
 // - a Bot_Worker failure (crash or timeout) followed by "Retry bot" completing the bot turn;
 // - navigation away during a bot turn, then a return with hero controls enabled;
 // - takeover after another tab advanced the hand;
@@ -94,7 +94,7 @@ for (const mode of ['crash', 'timeout'] as const) {
     await page.getByRole('button', { name: /^Call/ }).click();
     const clickedAt = Date.now();
 
-    // Req 2.4: within 10 s the failure is shown with "Retry bot", busy is clear and the
+    // Within 10 s the failure is shown with "Retry bot", busy is clear and the
     // session stays at the state before the request (only the hero's call is saved).
     const alert = page.getByRole('alert');
     await expect(alert).toContainText('Bot decision failed.', { timeout: 10_000 });
@@ -105,7 +105,7 @@ for (const mode of ['crash', 'timeout'] as const) {
     await expect(decisionRows(page).first()).toContainText('You · preflop');
     expect(await page.evaluate(() => (window as typeof window & { __decides: string[] }).__decides.length)).toBe(1);
 
-    // Req 2.5: Retry removes the message and sends one new request for the same state.
+    // Retry removes the message and sends one new request for the same state.
     await page.getByRole('button', { name: 'Retry bot' }).click();
     await expect(alert).toHaveCount(0);
     const outcome = await waitForBotTurnToFinish(page);
@@ -145,7 +145,7 @@ test('navigating away during a bot turn cancels it and returning re-enables hero
 
   await page.getByRole('link', { name: 'History', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Hand history' })).toBeVisible();
-  // Req 2.2: the pending request is cancelled (worker terminated) and no error is shown.
+  // The pending request is cancelled (worker terminated) and no error is shown.
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __terminated: number }).__terminated)).toBeGreaterThan(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 

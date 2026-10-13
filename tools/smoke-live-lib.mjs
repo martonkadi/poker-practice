@@ -1,12 +1,12 @@
-// Pure helpers for tools/smoke-live.mjs (Req 12). No network, browser or process access,
+// Pure helpers for tools/smoke-live.mjs. No network, browser or process access,
 // so they can be unit tested with `node --test`.
 //
 // Header expectations are shared with tools/check-dist.mjs. They are checks against the
 // served responses, not header definitions: apps/web/public/_headers stays the only
-// place header values are defined (Req 8.4).
+// place header values are defined.
 import { REQUIRED_HEADERS, cspProblems, moduleScriptSources } from './check-dist.mjs';
 
-/** Paths requested directly in the fetch step (Req 12.1). */
+/** Paths requested directly in the fetch step. */
 export const SMOKE_PATHS = Object.freeze([
   '/',
   '/play',
@@ -44,9 +44,9 @@ export function normalizeHeaders(headers) {
 }
 
 /**
- * Problems with the security headers of one response (Req 12.5): every response must carry
+ * Problems with the security headers of one response: every response must carry
  * `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`; HTML responses must
- * also carry the Requirement 8 CSP.
+ * also carry the site CSP.
  * @returns {string[]} empty when the headers are acceptable
  */
 export function headerProblems(headers, { html }) {
@@ -69,7 +69,7 @@ export function headerProblems(headers, { html }) {
 export const isHtmlContentType = (value) => /^\s*text\/html\b/i.test(value ?? '');
 
 /**
- * Problems with one directly fetched page (Req 12.1, 12.5): HTTP 200, an HTML document
+ * Problems with one directly fetched page: HTTP 200, an HTML document
  * that loads a same-origin entry module script, and the required headers.
  */
 export function pageProblems({ status, headers, body, siteOrigin }) {
@@ -101,7 +101,7 @@ export function entryScript(html, siteOrigin) {
 const LOCAL_SCHEMES = new Set(['data:', 'about:']);
 
 /**
- * Origins of requested URLs that differ from the site origin (Req 12.3), sorted and unique.
+ * Origins of requested URLs that differ from the site origin, sorted and unique.
  * `blob:` URLs are attributed to the origin that created them.
  */
 export function foreignOrigins(urls, siteOrigin) {
@@ -130,7 +130,7 @@ export function parseBuildCommit(text) {
 
 /**
  * True when the displayed commit equals the expected SHA or is a prefix of it at least
- * seven characters long (Req 12.4). Comparison ignores case and surrounding whitespace.
+ * seven characters long. Comparison ignores case and surrounding whitespace.
  */
 export function commitMatches(displayed, expected) {
   if (typeof displayed !== 'string' || typeof expected !== 'string') return false;
@@ -153,7 +153,7 @@ export function embeddedCommits(text) {
 }
 
 /**
- * Which build an entry script belongs to (Req 12.1, 12.4): the build embeds VITE_GIT_COMMIT
+ * Which build an entry script belongs to: the build embeds VITE_GIT_COMMIT
  * as a string, so the script served for the shell must contain the expected commit.
  * - If the script embeds full 40-hex SHAs, exactly one of them must start with `commit`.
  * - Otherwise the script must contain a 7 to 39 hex token that starts with `commit`.
@@ -178,7 +178,7 @@ export function entryBuildCommit(scriptText, commit) {
 export const isJavaScriptContentType = (value) => /^\s*(?:text|application)\/(?:javascript|ecmascript)\b/i.test(value ?? '');
 
 /**
- * Problems with a directly fetched entry module script (Req 8.3, 8.5, 12.1, 12.5): HTTP 200,
+ * Problems with a directly fetched entry module script: HTTP 200,
  * a JavaScript MIME type, nosniff and no-referrer, and the expected build commit embedded.
  * @returns {{ problems: string[], commit: string | null }}
  */
@@ -200,12 +200,12 @@ export function parseReviewResult(text) {
   return match ? match[1] : null;
 }
 
-/** Exit status for a run: 0 only when at least one step ran and every step passed (Req 12.6, 12.7). */
+/** Exit status for a run: 0 only when at least one step ran and every step passed. */
 export function exitCode(results) {
   return Array.isArray(results) && results.length > 0 && results.every((r) => r.pass === true) ? 0 : 1;
 }
 
-/** One pass/fail line with the step, requested URL, expected and observed values (Req 12.7). */
+/** One pass/fail line with the step, requested URL, expected and observed values. */
 export function formatResult({ step, url, expected, observed, pass }) {
   const flat = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
   return `${pass ? 'PASS' : 'FAIL'} ${step} | url: ${url} | expected: ${flat(expected)} | observed: ${flat(observed)}`;

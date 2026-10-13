@@ -11,7 +11,7 @@ import { Cards } from '../components/Cards';
 import styles from '../styles.module.css';
 
 // This module is lazy-loaded from main.tsx so the rules engine (`poker-engine-ts`,
-// reached through @poker/poker, useGame and session) stays out of the entry chunk (Req 9.5).
+// reached through @poker/poker, useGame and session) stays out of the entry chunk.
 export function Play() {
   const game = useGame();
   const store = useStoreStatus();
@@ -23,7 +23,7 @@ export function Play() {
   const settled = session ? isSettled(session.state) : false;
   const identity = session ? handIdentity(session.state) : null;
   const enabled = store.writable && writable && !busy && !loading && !game.restoreFailed;
-  // Buttons and keyboard shortcuts share one enablement map (Req 2.7, 2.8).
+  // Buttons and keyboard shortcuts share one enablement map.
   const controls = controlsFor(legal, !enabled);
   // Reset the typed amount only when the decision changes, not when the same state is re-read.
   const decision = decisionKey(session);
@@ -39,7 +39,7 @@ export function Play() {
     };
     window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler);
   });
-  // Stacks, pot and bets share the History unit (Req 7.5).
+  // Stacks, pot and bets share the History unit.
   const money = (value: number) => formatAmount(value, unit);
   const heroCards = session ? hole(session.state, 'hero') : [];
   const outcome = session && settled ? result(session.state) : null;

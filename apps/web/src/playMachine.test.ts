@@ -82,7 +82,7 @@ function terminalFor(p: Phase, choice: number, token: number): PlayEvent {
 }
 
 describe('playReducer', () => {
-  // Feature: guest-mvp-release, Property 1: Busy-state liveness
+  // Property: Busy-state liveness
   // **Validates: Requirements 2.1, 2.2, 2.3, 2.6**
   it('is busy only while a started request or save awaits its terminal event', () => {
     fc.assert(
@@ -128,7 +128,7 @@ const arbLegal: fc.Arbitrary<LegalActionSet | null> = fc.option(
 );
 
 describe('controlsFor', () => {
-  // Feature: guest-mvp-release, Property 2: Busy rejects input and controls follow legality
+  // Property: Busy rejects input and controls follow legality
   // **Validates: Requirements 2.7, 2.8**
   it('enables nothing while busy and exactly the legal controls otherwise', () => {
     fc.assert(

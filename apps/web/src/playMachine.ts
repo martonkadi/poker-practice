@@ -44,15 +44,15 @@ export function playReducer(phase: Phase, event: PlayEvent): Phase {
       return phase.kind === 'idle' ? { kind: 'botThinking', requestId: event.requestId, sessionRef: event.sessionRef } : phase;
     case 'BOT_DECIDED':
       if (phase.kind !== 'botThinking' || phase.requestId !== event.requestId) return phase;
-      // Stale decisions are discarded without an error (Req 2.1); accepted ones stay busy until saved (Req 2.3).
+      // Stale decisions are discarded without an error; accepted ones stay busy until saved.
       return event.stale ? IDLE : { kind: 'saving', op: 'bot', token: event.token };
     case 'BOT_CANCELLED':
-      // Cancellation clears busy silently (Req 2.2).
+      // Cancellation clears busy silently.
       return phase.kind === 'botThinking' && phase.requestId === event.requestId ? IDLE : phase;
     case 'BOT_FAILED':
       return phase.kind === 'botThinking' && phase.requestId === event.requestId ? { kind: 'botFailed', message: event.message } : phase;
     case 'RETRY':
-      // Back to idle so the bot effect sends one new request for the unchanged session (Req 2.5).
+      // Back to idle so the bot effect sends one new request for the unchanged session.
       return phase.kind === 'botFailed' ? IDLE : phase;
     case 'DISMISS':
       // Dismissing a bot failure would silently retry, so only save failures can be dismissed.

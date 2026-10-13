@@ -32,7 +32,7 @@ export function requestBot(observation: PlayerObservation, difficulty: Difficult
     const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', cancel); };
     pending.set(id, { resolve, reject, cleanup });
     signal.addEventListener('abort', cancel, { once: true });
-    // Posts exactly { kind, id, observation, difficulty }; observation is observe(state, 'bot') (Req 4.5).
+    // Posts exactly { kind, id, observation, difficulty }; observation is observe(state, 'bot').
     const message: BotWorkerMessage = { kind: 'decide', id, observation, difficulty };
     try { getWorker().postMessage(message); }
     catch { resetWorker(new Error('Could not start the bot. Retry this decision.')); }

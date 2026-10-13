@@ -113,7 +113,7 @@ export function useGame(deps: GameDeps = {}) {
     send({ type: 'BOT_REQUESTED', requestId, sessionRef: expected });
     requestBot.current(observe(expected.state, 'bot'), expected.difficulty, controller.signal).then(decision => {
       if (controller.signal.aborted || !live.current || active.current !== expected) {
-        send({ type: 'BOT_DECIDED', requestId, stale: true, token: 0 }); // Discarded unsaved (Req 2.1).
+        send({ type: 'BOT_DECIDED', requestId, stale: true, token: 0 }); // Discarded unsaved.
         return;
       }
       runSave('bot', requestId, () => actAndSave(expected, decision.action));

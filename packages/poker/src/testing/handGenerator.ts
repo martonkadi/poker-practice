@@ -129,7 +129,7 @@ export function toHandRecord(hand: GeneratedHand): HandRecord {
 
 function actionText(a: Action): string { return a.kind === 'raiseTo' ? `raiseTo(${a.amount})` : a.kind; }
 
-/** Deck (card text) and action list for failure messages (Req 3.8). */
+/** Deck (card text) and action list for failure messages. */
 export function describeHand(hand: Pick<GeneratedHand, 'spec' | 'deck' | 'steps'>): string {
   const actions = hand.steps.map(s => `${s.actor}@${s.beforeFrame.street}: ${actionText(s.input)} -> ${actionText(s.recorded.action)} [${s.recorded.amount}]`);
   return [`button=${hand.spec.button} seed=${hand.spec.seed} policySeed=${hand.spec.policySeed}`,

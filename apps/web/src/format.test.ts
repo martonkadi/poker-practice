@@ -19,9 +19,9 @@ describe('formatAmount', () => {
     expect(formatAmount(-4, 'bb', { signed: true })).toBe(`${MINUS}0.0 bb`);
   });
 
-  // Feature: guest-mvp-release, Property 11: Formatter consistency
+  // Property: Formatter consistency
   // **Validates: Requirements 7.1, 7.2, 7.4**
-  it('Property 11: signed chips and bb strings follow the spec format', () => {
+  it('signed chips and bb strings follow the spec format', () => {
     fc.assert(
       fc.property(fc.integer({ min: -20_000, max: 20_000 }), (n) => {
         const abs = Math.abs(n);

@@ -59,9 +59,9 @@ assert sum(pot.amount for pot in s.pots) == 503
 print("PokerKit reference: blind order, limp, minimum raise, fold, all-in and multiway side pots passed")
 
 
-# Shared fixed-deck rules fixtures (Req 3.10), also asserted by
+# Shared fixed-deck rules fixtures, also asserted by
 # packages/poker/src/rules-fixtures.test.ts. PokerKit is driven with each
-# expected Canonical_Action; it must accept it, agree on actor and street,
+# expected canonical action; it must accept it, agree on actor and street,
 # label it the same way (check/call/raiseTo by chips) and add the same chips.
 FIXTURES = Path(__file__).resolve().parents[2] / "packages" / "poker" / "fixtures" / "rules-regression.json"
 STREETS = ("preflop", "flop", "turn", "river")

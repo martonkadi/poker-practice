@@ -1,4 +1,4 @@
-// Feature: guest-mvp-release, Property 8: Bot observation isolation
+// Property: Bot observation isolation
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import type { Card, PlayerObservation, Street } from '@poker/contracts';
@@ -50,8 +50,8 @@ function checkObservation(obs: PlayerObservation, expected: { botHole: Card[]; h
   for (const c of expected.heroHole) expect(visible).not.toContain(c);
 }
 
-describe('Property 8: Bot observation isolation', () => {
-  it('bot observations carry only the bot hole cards and the board dealt so far (Req 4.1, 4.2, 4.5)', async () => {
+describe('Bot observation isolation', () => {
+  it('bot observations carry only the bot hole cards and the board dealt so far', async () => {
     const streetsSeen = new Set<Street>();
     let botDecisions = 0;
     await fc.assert(fc.asyncProperty(handSpecArb, fc.boolean(), async (spec, passive) => {

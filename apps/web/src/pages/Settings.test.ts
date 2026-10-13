@@ -108,13 +108,13 @@ afterEach(async () => {
   await deleteLocal(GUEST_OWNER);
 });
 
-it('states there is no account or cloud backup and that clearing browser data deletes saved hands (Req 6.9)', async () => {
+it('states there is no account or cloud backup and that clearing browser data deletes saved hands', async () => {
   await renderSettings();
   expect(text()).toContain('There is no account or cloud backup');
   expect(text()).toContain('Clearing browser data deletes your saved hands');
 });
 
-it('exports every saved hand as one poker-practice v1 file (Req 6.1)', async () => {
+it('exports every saved hand as one poker-practice v1 file', async () => {
   const blobs: Blob[] = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => { blobs.push(blob as Blob); return 'blob:export'; });
   vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -131,7 +131,7 @@ it('exports every saved hand as one poker-practice v1 file (Req 6.1)', async () 
   expect(text()).not.toContain(EXPORT_FAILED_MESSAGE);
 });
 
-it('downloads nothing and keeps the data when the export fails (Req 6.8)', async () => {
+it('downloads nothing and keeps the data when the export fails', async () => {
   const objectUrls = vi.spyOn(URL, 'createObjectURL');
   const clicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   vi.mocked(exportHands).mockRejectedValueOnce(new Error('read failed'));
@@ -144,7 +144,7 @@ it('downloads nothing and keeps the data when the export fails (Req 6.8)', async
   expect(await snapshot()).toEqual(before);
 });
 
-it('asks for confirmation and keeps everything when the guest cancels (Req 6.3, 6.5)', async () => {
+it('asks for confirmation and keeps everything when the guest cancels', async () => {
   const confirm = confirmMock.mockReturnValue(false);
   const before = await snapshot();
   await renderSettings();
@@ -157,7 +157,7 @@ it('asks for confirmation and keeps everything when the guest cancels (Req 6.3, 
   expect(unit()).toBe('bb');
 });
 
-it('keeps the data and asks to close the other tab when another tab holds the lock (Req 6.6)', async () => {
+it('keeps the data and asks to close the other tab when another tab holds the lock', async () => {
   confirmMock.mockReturnValue(true);
   const before = await snapshot();
   await renderSettings();
@@ -172,7 +172,7 @@ it('keeps the data and asks to close the other tab when another tab holds the lo
   await otherTab;
 });
 
-it('stays on Settings with an error when deletion fails (Req 6.7)', async () => {
+it('stays on Settings with an error when deletion fails', async () => {
   confirmMock.mockReturnValue(true);
   vi.mocked(deleteLocal).mockRejectedValueOnce(new Error('transaction aborted'));
   await renderSettings();
@@ -183,7 +183,7 @@ it('stays on Settings with an error when deletion fails (Req 6.7)', async () => 
   expect(unit()).toBe('bb');
 });
 
-it('deletes hands, bookmarks, the active session and the chip preference, resets to chips and goes home (Req 6.4)', async () => {
+it('deletes hands, bookmarks, the active session and the chip preference, resets to chips and goes home', async () => {
   confirmMock.mockReturnValue(true);
   await renderSettings();
   await click('Delete local data');

@@ -30,7 +30,7 @@ function deckFor(fx: Fixture): Card[] {
 }
 
 /**
- * Standard fixtures go through createHand. Unequal stacks cannot occur in the MVP (both seats
+ * Standard fixtures go through createHand. Unequal stacks cannot occur in the app (both seats
  * always start at 10,000), so the short-call fixture builds an otherwise identical engine state
  * with the same seats, blinds and deck rules; every action still goes through the adapter.
  */
@@ -47,7 +47,7 @@ async function deal(fx: Fixture, deck: Card[]): Promise<EngineState> {
   return summary.session;
 }
 
-describe('rules regression fixtures (Req 3.10)', () => {
+describe('rules regression fixtures', () => {
   it('covers each required case', () => {
     expect(fixtures.map(fx => fx.name)).toEqual([
       'preflop all-in call', 'postflop all-in call', 'short all-in call', 'all-in raise',

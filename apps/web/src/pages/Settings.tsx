@@ -26,7 +26,7 @@ export function Settings() {
     setMessage('');
     let url: string | undefined;
     try {
-      // Build the whole file before starting the download, so a failure downloads nothing (Req 6.8).
+      // Build the whole file before starting the download, so a failure downloads nothing.
       const text = await exportHands(GUEST_OWNER);
       url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
       const a = document.createElement('a');
@@ -42,7 +42,7 @@ export function Settings() {
   }
 
   async function clear() {
-    // Cancelling keeps everything and stays here (Req 6.3, 6.5).
+    // Cancelling keeps everything and stays here.
     if (!window.confirm(DELETE_CONFIRM_MESSAGE)) return;
     setMessage('');
     if (!navigator.locks) { setMessage(DELETE_NO_LOCKS_MESSAGE); return; }
@@ -50,9 +50,9 @@ export function Settings() {
     let outcome: DeleteOutcome;
     try {
       outcome = await navigator.locks.request(SESSION_LOCK, { ifAvailable: true }, async (lock): Promise<DeleteOutcome> => {
-        // Another tab holds the table: touch nothing (Req 6.6).
+        // Another tab holds the table: touch nothing.
         if (!lock) return 'locked';
-        // One transaction: hands, bookmarks, active session and preference go together or not at all (Req 6.4, 6.7).
+        // One transaction: hands, bookmarks, active session and preference go together or not at all.
         await deleteLocal(GUEST_OWNER);
         return 'deleted';
       });

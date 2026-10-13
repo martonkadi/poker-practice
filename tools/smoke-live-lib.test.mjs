@@ -27,7 +27,7 @@ const BASE_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': '
 const HTML_HEADERS = { ...BASE_HEADERS, 'Content-Security-Policy': GOOD_CSP, 'Content-Type': 'text/html; charset=utf-8' };
 const GOOD_HTML = '<!doctype html><html><head><script type="module" crossorigin src="/assets/index-abc.js"></script></head><body><div id="root"></div></body></html>';
 
-// Header validation (Req 12.5)
+// Header validation
 
 test('accepts the required headers in any case, from a plain object or a Headers instance', () => {
   assert.deepEqual(headerProblems(HTML_HEADERS, { html: true }), []);
@@ -44,7 +44,7 @@ test('reports missing and different nosniff / no-referrer values on any response
   ]);
 });
 
-test('requires the Requirement 8 CSP only on HTML responses', () => {
+test('requires the site CSP only on HTML responses', () => {
   assert.deepEqual(headerProblems(BASE_HEADERS, { html: false }), []);
   assert.deepEqual(headerProblems(BASE_HEADERS, { html: true }), ['missing Content-Security-Policy']);
   const weak = headerProblems({ ...HTML_HEADERS, 'Content-Security-Policy': GOOD_CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'") }, { html: true });
@@ -74,7 +74,7 @@ test('entryScript returns the first same-origin module script path', () => {
   assert.equal(entryScript('<script src="/assets/classic.js"></script>', SITE), null);
 });
 
-// Foreign-origin detection (Req 12.3)
+// Foreign-origin detection
 
 test('foreignOrigins ignores same-origin, data: and about: URLs', () => {
   assert.deepEqual(foreignOrigins([
@@ -108,7 +108,7 @@ test('foreignOrigins attributes blob: URLs to their creator and reports unparsea
   ]);
 });
 
-// Commit prefix matching (Req 12.4)
+// Commit prefix matching
 
 test('commitMatches accepts the full SHA or a prefix of at least 7 characters, ignoring case and spaces', () => {
   assert.equal(commitMatches(SHA, SHA), true);
@@ -127,7 +127,7 @@ test('commitMatches rejects short prefixes, mismatches, non-prefixes and missing
   assert.equal(commitMatches('unknown', SHA), false);
 });
 
-// Entry script build commit (Req 12.1, 12.4): the shell must belong to the expected build
+// Entry script build commit: the shell must belong to the expected build
 
 const OLD_SHA = '9d15c68115aef6a486bc4f6ba36e649a4280b5bf';
 const chunk = (sha) => `const a="0.1.0-rc.1",b="${sha}",c="production";export{a,b,c};`;
@@ -190,7 +190,7 @@ test('parseBuildCommit and parseReviewResult read the displayed values', () => {
   assert.equal(parseReviewResult('Final board: Ah Kd 2c'), null);
 });
 
-// Non-zero exit and failure reporting (Req 12.6, 12.7)
+// Non-zero exit and failure reporting
 
 test('exitCode is 0 only when at least one step ran and every step passed', () => {
   assert.equal(exitCode([{ pass: true }, { pass: true }]), 0);

@@ -1,4 +1,4 @@
-// Release browser suite: MVP scope, opponent label and chip unit (Req 5.2, 5.3, 5.9, 5.10, 7.5, 7.6).
+// Browser tests: what the app offers, the opponent label and the chip unit.
 //
 // - Deferred-feature paths render the same not-found view as any unknown path.
 // - No page reachable from home shows a control for a deferred feature, or a forbidden
@@ -17,11 +17,11 @@ const handComplete = (page: Page) => page.getByRole('heading', { name: 'Hand com
 const heroReady = (page: Page) => page.locator('button:enabled', { hasText: /^(Call|Check)/ });
 /** Wait budget for one real-worker bot turn (see gameplay.spec.ts). */
 const BOT_TURN = { timeout: 15_000 };
-/** Req 7.6: the new unit must show within 1 second, without a reload. */
+/** The new unit must show within 1 second, without a reload. */
 const WITHIN_1S = { timeout: 1_000 };
 
 // ---------------------------------------------------------------------------
-// Forbidden controls (Req 5.2) and forbidden terms (Req 5.10)
+// Forbidden controls and forbidden terms
 // ---------------------------------------------------------------------------
 
 /**
@@ -31,7 +31,7 @@ const WITHIN_1S = { timeout: 1_000 };
  */
 const FORBIDDEN_CONTROL = /sign[\s-]?(in|up|out)|log[\s-]?(in|out)|oauth|\bauth\b|account|\bsync|import|difficult|\blevel\b|animation|speed|equity|recommend|suggest|\bhint|coach|advice|solver|\bgto\b/i;
 
-/** Terms that must not be displayed except in an explicit denial (Req 5.10). */
+/** Terms that must not be displayed except in an explicit denial. */
 const FORBIDDEN_TERMS: readonly RegExp[] = [
   /\bGTO\b/i,
   /\bgame[\s-]theory[\s-]optimal\b/i,
@@ -200,7 +200,7 @@ test('the opponent is labelled standard-v1 experimental on Play and About', asyn
 });
 
 // ---------------------------------------------------------------------------
-// Chip unit (Req 7.5, 7.6)
+// Chip unit
 // ---------------------------------------------------------------------------
 
 const CHIPS = /(\d[\d,]*) chips/g;

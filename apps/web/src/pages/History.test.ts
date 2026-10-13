@@ -72,7 +72,7 @@ afterEach(async () => {
   await deleteLocal(GUEST_OWNER);
 });
 
-it('shows chips and lists every hand when no preference is stored, without writing one (Req 7.3)', async () => {
+it('shows chips and lists every hand when no preference is stored, without writing one', async () => {
   expect(await db.preferences.toArray()).toEqual([]);
   await renderHistory();
   expect(rows()).toEqual(EXPECTED);
@@ -80,7 +80,7 @@ it('shows chips and lists every hand when no preference is stored, without writi
   expect(await db.preferences.toArray()).toEqual([]);
 });
 
-it('shows chips and lists every hand when the preference cannot be loaded, leaving it unchanged (Req 7.3)', async () => {
+it('shows chips and lists every hand when the preference cannot be loaded, leaving it unchanged', async () => {
   const stored = { owner: GUEST_OWNER, chipsAsBb: true, animationSpeed: 'fast' as const };
   await db.preferences.put(stored);
   vi.mocked(getPreference).mockRejectedValueOnce(new Error('read failed'));

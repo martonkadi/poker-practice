@@ -1,4 +1,4 @@
-// Release browser scenarios for local data and narrow layout (Req 6.1–6.4, 10.4):
+// Release browser scenarios for local data and narrow layout:
 // export (download, parse, validate), deletion (confirm, IndexedDB empty, home page)
 // and every route at a 390 px viewport without horizontal page overflow.
 import type { Locator } from '@playwright/test';
@@ -134,7 +134,7 @@ test('deletion asks first, then clears every local table and returns home', asyn
   expect(before.bookmarks).toHaveLength(1);
   expect(before.preferences).toHaveLength(1);
 
-  // Cancelling the confirmation keeps all data and stays on Settings (Req 6.3, 6.5).
+  // Cancelling the confirmation keeps all data and stays on Settings.
   const dismissed: string[] = [];
   page.once('dialog', dialog => { dismissed.push(`${dialog.type()}: ${dialog.message()}`); void dialog.dismiss(); });
   await page.getByRole('button', { name: 'Delete local data' }).click();
@@ -143,7 +143,7 @@ test('deletion asks first, then clears every local table and returns home', asyn
   await expect(page).toHaveURL('/settings');
   expect(await readStores(page)).toEqual(before);
 
-  // Confirming deletes hands, bookmarks, the active session and the preference, then goes home (Req 6.4).
+  // Confirming deletes hands, bookmarks, the active session and the preference, then goes home.
   page.once('dialog', dialog => void dialog.accept());
   await page.getByRole('button', { name: 'Delete local data' }).click();
   await expect(page).toHaveURL('/');

@@ -1,4 +1,4 @@
-// Shared Playwright fixtures for the release browser suite (Req 8.6, 8.7).
+// Shared Playwright fixtures for the release browser suite.
 //
 // Every test that imports `test` from this module fails if any page in its
 // browser context reports a Content-Security-Policy violation, either as a

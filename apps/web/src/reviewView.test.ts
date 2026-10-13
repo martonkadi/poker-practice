@@ -49,7 +49,7 @@ describe('reviewView', () => {
   });
 });
 
-// Feature: guest-mvp-release, Property 9: Review view shows only decision-time cards
+// Property: Review view shows only decision-time cards
 describe('reviewView property', () => {
   const STREETS = ['preflop', 'flop', 'turn', 'river'] as const;
   const BOARD_LENGTH = [0, 3, 4, 5] as const;

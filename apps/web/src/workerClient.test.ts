@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// Feature: guest-mvp-release, Property 8: Bot observation isolation (worker payload capture, Req 4.5)
+// The bot worker receives only the bot's observation (captures the posted payload).
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { PlayerObservation } from '@poker/contracts';
 import { applyAction, createHand, frame, hole, observe } from '@poker/poker';

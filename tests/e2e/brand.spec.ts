@@ -1,4 +1,4 @@
-// Visible brand checks (headsup-brand-rename Req 3.1–3.5, 6.2, 6.3): every route
+// Visible brand checks: every route
 // shows the HeadsUp header link and document title, no route shows the legacy
 // product name in visible text, the title or accessible names, and the served
 // first-party license names HeadsUp contributors. Internal identifiers such as

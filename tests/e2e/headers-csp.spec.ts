@@ -1,4 +1,4 @@
-// Release browser checks for static hosting headers and the CSP (Req 8.1–8.3, 8.5–8.7).
+// Release browser checks for static hosting headers and the CSP.
 //
 // The suite runs against `tools/serve-dist.mjs`, which applies `dist/_headers`
 // exactly as parsed, so these tests verify the deployment artifact's header
@@ -18,7 +18,7 @@ const REQUIRED_DIRECTIVES: Record<string, string> = {
   'object-src': "'none'",
   'base-uri': "'self'"
 };
-/** Only these source expressions may appear anywhere in the policy (Req 8.2: no other origin, no wildcard). */
+/** Only these source expressions may appear anywhere in the policy (no other origin, no wildcard). */
 const ALLOWED_SOURCES = new Set(["'self'", "'none'"]);
 const FORBIDDEN_TOKENS = ["'unsafe-inline'", "'unsafe-eval'", 'blob:', 'data:', '*'];
 
@@ -32,7 +32,7 @@ function parseCsp(value: string): Map<string, string[]> {
   return directives;
 }
 
-/** Every problem with a CSP value, each naming the header and URL (Req 8.7). */
+/** Every problem with a CSP value, each naming the header and URL. */
 function cspProblems(value: string | undefined, url: string): string[] {
   if (!value) return [`Content-Security-Policy header missing on ${url}`];
   const problems: string[] = [];
@@ -55,7 +55,7 @@ function cspProblems(value: string | undefined, url: string): string[] {
   return problems;
 }
 
-/** Problems with the headers every response must carry (Req 8.3). */
+/** Problems with the headers every response must carry. */
 function commonHeaderProblems(headers: Record<string, string>, url: string): string[] {
   const problems: string[] = [];
   const nosniff = headers['x-content-type-options'];
@@ -102,7 +102,7 @@ async function discoverAssets(request: APIRequestContext): Promise<{ entry: stri
       if (!resolved.startsWith('/assets/')) continue;
       if (/bot\.worker/.test(resolved)) {
         worker = resolved;
-        // The worker must be constructed as a module worker (Req 8.6).
+        // The worker must be constructed as a module worker.
         expect(source, `module worker construction for ${resolved} in ${script}`).toMatch(/new Worker\([^)]*bot\.worker[^]*?\{\s*type:\s*["'`]module["'`]\s*\}/);
       } else queue.push(resolved);
     }
@@ -134,8 +134,8 @@ test('every response carries the security headers and a correct MIME type', asyn
     problems.push(...commonHeaderProblems(headers, stylesheet));
     problems.push(...mimeProblem(headers, stylesheet, /^text\/css$/, 'text/css'));
   }
-  // Plain-text files: CSP is detached in _headers (Req 8.1 covers HTML only), but
-  // nosniff, no-referrer and text/plain are still required (Req 8.3, 8.5).
+  // Plain-text files: CSP is detached in _headers (it covers HTML only), but
+  // nosniff, no-referrer and text/plain are still required.
   for (const text of ['/license.txt', '/third-party-notices.txt']) {
     const response = await fetchOk(request, text);
     problems.push(...commonHeaderProblems(response.headers(), text));

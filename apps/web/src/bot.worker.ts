@@ -1,7 +1,7 @@
 import { decide } from '@poker/bots';
 import type { Difficulty, PlayerObservation } from '@poker/contracts';
 
-/** The only messages the bot worker accepts (Req 4.5, 5.4). */
+/** The only messages the bot worker accepts. */
 export type BotWorkerMessage =
   | { kind: 'decide'; id: string; observation: PlayerObservation; difficulty: Difficulty }
   | { kind: 'cancel'; id: string };

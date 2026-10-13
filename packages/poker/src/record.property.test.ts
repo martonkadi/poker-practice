@@ -22,7 +22,7 @@ function expectedChipsAdded(step: HandStep): number {
 }
 
 describe('generated hands: canonical recording', () => {
-  // Feature: guest-mvp-release, Property 3: Canonical action consistency
+  // Property: Canonical action consistency
   // **Validates: Requirements 3.1, 3.2, 3.3**
   it('records fold/check as 0, call vs raiseTo by street totals, and the amount as the stack decrease', async () => {
     await fc.assert(fc.asyncProperty(handSpecArb, async spec => {
@@ -53,7 +53,7 @@ describe('generated hands: canonical recording', () => {
     }), { numRuns: NUM_RUNS });
   }, TIMEOUT_MS);
 
-  // Feature: guest-mvp-release, Property 4: Decision ordering by street
+  // Property: Decision ordering by street
   // **Validates: Requirements 3.4**
   it('orders decisions by street and records a street-closing call before the next street is dealt', async () => {
     await fc.assert(fc.asyncProperty(handSpecArb, async spec => {
@@ -80,7 +80,7 @@ describe('generated hands: canonical recording', () => {
     }), { numRuns: NUM_RUNS });
   }, TIMEOUT_MS);
 
-  // Feature: guest-mvp-release, Property 5: Chip conservation
+  // Property: Chip conservation
   // **Validates: Requirements 3.5, 3.8**
   it('keeps stacks plus pot at 20,000 in every recorded frame and the final stacks at 20,000', async () => {
     await fc.assert(fc.asyncProperty(handSpecArb, async spec => {
@@ -95,7 +95,7 @@ describe('generated hands: canonical recording', () => {
     }), { numRuns: NUM_RUNS });
   }, TIMEOUT_MS);
 
-  // Feature: guest-mvp-release, Property 6: Replay round trip
+  // Property: Replay round trip
   // **Validates: Requirements 3.6, 3.8, 5.8**
   it('saves a schema-valid Hand_Record whose canonical actions replay to the same board and outcome', async () => {
     await fc.assert(fc.asyncProperty(handSpecArb, async spec => {
@@ -121,7 +121,7 @@ describe('generated hands: canonical recording', () => {
     }), { numRuns: NUM_RUNS });
   }, TIMEOUT_MS);
 
-  // Feature: guest-mvp-release, Property 7: Hero contribution sum
+  // Property: Hero contribution sum
   // **Validates: Requirements 3.7, 3.8**
   it("sums the hero's recorded amounts plus posted blind to the hero's total contribution", async () => {
     await fc.assert(fc.asyncProperty(handSpecArb, async spec => {

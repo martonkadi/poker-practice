@@ -2,13 +2,13 @@
 // Release artifact checks for the production build in `dist/`.
 //
 // Fails with a named reason when:
-// - entry-size:     the entry chunk referenced by index.html is over 500,000 bytes (Req 9.5-9.7);
-// - cloud-code:     a JavaScript file contains "supabase" or a removed cloud module identifier (Req 5.1);
-// - test-hook:      a test fixture hook or test-only file is present in the build (Req 10.5);
-// - inline-markup:  index.html contains an inline <script>, <style> or style attribute (CSP, Req 8.2);
+// - entry-size:     the entry chunk referenced by index.html is over 500,000 bytes;
+// - cloud-code:     a JavaScript file contains "supabase" or a removed cloud module identifier;
+// - test-hook:      a test fixture hook or test-only file is present in the build;
+// - inline-markup:  index.html contains an inline <script>, <style> or style attribute (blocked by the CSP);
 // - headers:        dist/_headers lacks a required header, has a different value,
-//                   or the CSP contains a forbidden token (Req 8.1-8.4, 8.7).
-// The measured entry chunk size is always printed (Req 9.7).
+//                   or the CSP contains a forbidden token.
+// The measured entry chunk size is always printed.
 //
 // Usage: node tools/check-dist.mjs [--dir dist]
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -23,7 +23,7 @@ export const REQUIRED_HEADERS = Object.freeze({
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer'
 });
-/** CSP directives that must be present with exactly these sources (Req 8.1). */
+/** CSP directives that must be present with exactly these sources. */
 export const REQUIRED_CSP_DIRECTIVES = Object.freeze({
   'default-src': "'self'",
   'script-src': "'self'",
@@ -33,7 +33,7 @@ export const REQUIRED_CSP_DIRECTIVES = Object.freeze({
   'object-src': "'none'",
   'base-uri': "'self'"
 });
-/** Only these source expressions may appear in any CSP directive (Req 8.2: no origin other than 'self'). */
+/** Only these source expressions may appear in any CSP directive (no origin other than 'self'). */
 const ALLOWED_CSP_SOURCES = new Set(["'self'", "'none'"]);
 const FORBIDDEN_CSP_TOKENS = ["'unsafe-inline'", "'unsafe-eval'", 'blob:', 'data:'];
 
@@ -128,7 +128,7 @@ export function parseCsp(value) {
   return directives;
 }
 
-/** Problems with one CSP value against Req 8.1 and 8.2. */
+/** Problems with one CSP value: missing directives, wrong sources or foreign origins. */
 export function cspProblems(value) {
   const problems = [];
   const directives = parseCsp(value);

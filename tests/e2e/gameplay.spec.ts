@@ -1,4 +1,4 @@
-// Release browser suite: gameplay scenarios (Req 2.7, 10.4).
+// Release browser suite: gameplay scenarios.
 //
 // Covers a showdown hand, a fold hand, three hands with an alternating dealer button,
 // a mid-hand reload that restores the same state, rapid repeated input that commits one

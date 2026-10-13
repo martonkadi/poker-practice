@@ -60,7 +60,7 @@ describe('export round trip', () => {
   });
   afterAll(async () => { await deleteLocal(GUEST_OWNER); });
 
-  // Feature: guest-mvp-release, Property 10: Export round trip
+  // Property: Export round trip
   // **Validates: Requirements 6.1, 6.2**
   it('exports every stored guest hand as a valid archive equal to listHands', async () => {
     await fc.assert(fc.asyncProperty(fc.uniqueArray(handArb, { selector: h => h.id, maxLength: 8 }), async records => {
