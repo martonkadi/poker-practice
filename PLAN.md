@@ -1,8 +1,8 @@
 # Poker Practice MVP plan
 
-Updated 2026-10-04 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values.
+Updated 2026-10-13 (America/Chicago). This file is the only place that records milestone status. `roadmap.md` and `README.md` link here and carry no status values.
 
-rc.2 summary (2026-10-04): the Owner asked to rename the product to HeadsUp wherever a user sees its name, ship it as `v0.1.0-rc.2`, and keep only `main` on GitHub. Internal identifiers stay unchanged: the repository name, package names, the IndexedDB name `poker-practice`, the export `format: 'poker-practice'`, the Worker name and the Live_Site URL. From rc.2 on, `main` is the release branch (see [Deploy dispatch ref convention](#deploy-dispatch-ref-convention)). Status: MVP-5 is in progress.
+rc.2 summary (2026-10-04): the Owner asked to rename the product to HeadsUp wherever a user sees its name, ship it as `v0.1.0-rc.2`, and keep only `main` on GitHub. Internal identifiers stay unchanged: the repository name, package names, the IndexedDB name `poker-practice`, the export `format: 'poker-practice'`, the Worker name and the Live_Site URL. From rc.2 on, `main` is the release branch (see [Deploy dispatch ref convention](#deploy-dispatch-ref-convention)). Status: MVP-5 passed (2026-10-13). rc.2 Candidate `ef9c9081ea1077ed8b14928ce9103c9b789d7b71` is deployed (Cloudflare version `766b4327-307b-4549-b3fb-41fe748105ec`), tagged `v0.1.0-rc.2` and published as a prerelease that is not latest; only `main` remains on GitHub (see MVP-5 and [Delivery](#delivery)).
 
 rc.1 summary: release state `v0.1.0-rc.1` delivered (2026-10-04). MVP-1 through MVP-4 passed at Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1`. MVP-3 passed on 2026-10-04, when its screenshots were recaptured from the Candidate build (see MVP-3). The rc.1 Delivery_Report (task 15.8) was given to the Owner on 2026-10-04 and is summarized in [Delivery](#delivery). The GitHub prerelease `v0.1.0-rc.1` was published on 2026-10-01 21:03 CDT at https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.1 (prerelease, not a draft, not latest) on the existing annotated tag, which peels to the Candidate. The Owner's Deploy_Workflow run on the Candidate (dispatched from `deploy/3b431ed`) passed every step on 2026-10-01, including `wrangler deploy` (Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`) and the in-workflow live smoke (12/12). The agent read that run with `gh` and confirmed `headSha` and the printed `Candidate commit 3b431ed369705604feb3602d268a98aaffcaedd1` line. The agent's live smoke of `3b431ed` against https://poker-practice.marton-kadi.workers.dev passed all 12 steps on 2026-10-01 20:05 CDT (exit 0), and a manual-style product check passed 42 of 42 at 1280x720 and 390x844. `ci.yml` passed on evidence commits `343ac3f` and `a0381eb`, whose files equal the Candidate's except `PLAN.md` (see [`ci.yml` runs](#ciyml-runs-on-releaseguest-mvp)). Previous summary: Candidate_Commit `d4f22b9f8f0af432b99aa192f90fa7819c3f3189` is superseded: its Deploy_Workflow run deployed it (Cloudflare version `ca03b60e-f4bb-4361-9e2b-c380fbfa9862`), but the live smoke step failed 1 of 12 steps ("about commit"). During edge propagation Cloudflare served the old and the new version side by side. The smoke's direct fetches passed while checking the old build, because they did not verify which build the shell belonged to. A later local check found that the Live_Site now serves `d4f22b9` on every request and passes the smoke. The new Candidate_Commit `3b431ed369705604feb3602d268a98aaffcaedd1` makes every fetch step verify the entry script's embedded commit, and it makes the wait require 5 consecutive matching probes (see [Superseded candidates](#superseded-candidates)). It passed every local Release_Check and the PokerKit reference (7 fixtures, 0 mismatches) on 2026-10-01. Earlier Candidates `9d15c68` and `911e9e9` are also superseded.
 
@@ -143,12 +143,25 @@ Ordered tasks: [roadmap.md](roadmap.md). Deployment access can be checked indepe
 
 ### MVP-5 HeadsUp brand rename (`v0.1.0-rc.2`)
 
-- Status: in progress (2026-10-04).
+- Status: passed (2026-10-13). Every evidence check below passed at Candidate_Commit `ef9c908`. Earlier status: in progress (2026-10-04).
 - Gate: the visible name is HeadsUp on every route (header link, document title), in `/license.txt` and `LICENSE`, in the export download name `headsup-<date>.json` and in the `README.md` title and intro; no legacy name in any built file; internal identifiers unchanged; every rc.1 Release_Check passes again at the rc.2 Candidate; deployed from `main` with the live smoke and a live brand check; tag `v0.1.0-rc.2` and a prerelease that is not latest; only `main` left on GitHub.
 - Commit: `ef9c9081ea1077ed8b14928ce9103c9b789d7b71` (rc.2 Candidate_Commit on `main`).
 - Evidence:
   - local Release_Checks on the clean Candidate: pass (2026-10-04; lint, typecheck, Vitest 75, test:tools 36, build, check:dist, rules fixtures 30, three-browser suite 114 passed / 6 skipped / 0 failed, PokerKit 7 fixtures / 0 mismatches, wide-font probe 108/108, 0 legacy-name matches in `dist`; see [rc.2 Candidate_Commit Release_Checks](#rc2-candidate_commit-release_checks))
   - screenshots from the Candidate `dist`: pass (2026-10-04; see MVP-3)
+  - `ci.yml` at the exact Candidate SHA: pass (2026-10-05; run https://github.com/martonkadi/poker-practice/actions/runs/37321952870, `push` event on `main`, `headSha` `ef9c9081ea1077ed8b14928ce9103c9b789d7b71`; read by the agent with `gh run list` on 2026-10-13). Unlike rc.1, this run checked the Candidate itself, because the evidence commits were held back until it finished.
+  - Deploy_Workflow on `main` at the Candidate: pass (2026-10-05, dispatched by the Owner; run https://github.com/martonkadi/poker-practice/actions/runs/37322005679/job/111803169711). Read by the agent with `gh run view --json` and `--log` on 2026-10-13: `conclusion: success`, `event: workflow_dispatch`, `headBranch: main`, `headSha: ef9c9081ea1077ed8b14928ce9103c9b789d7b71`, and all 16 steps of job `deploy` `success`. Log lines:
+    - "Print candidate commit": `Candidate commit ef9c9081ea1077ed8b14928ce9103c9b789d7b71`
+    - "Release checks and production build": test:tools `pass 36`, `check:dist: PASS entry-size, cloud-code, test-hook, inline-markup, headers`
+    - "Browser suite (Chromium, Firefox, WebKit) on dist": `114 passed (8.2m)`, `6 skipped`
+    - "PokerKit reference check": `PokerKit reference: 7 rules fixtures compared, 0 mismatches`
+    - "Deploy static assets": `Current Version ID: 766b4327-307b-4549-b3fb-41fe748105ec`
+    - "Live smoke check (Chromium)": `expected build served after 17.5 s: stable on 5 consecutive probes at least 3 s apart (1 of 6 probes mismatched)`, then 12 `PASS` lines (entry `/assets/index-L8ZoQW0V.js`, the Candidate build's entry) and `smoke:live: PASS all 12 steps`
+  - live smoke (local, 2026-10-13 17:43:27–17:43:54 CDT; Windows, Node 24.20.0, `NODE_OPTIONS=--use-system-ca`): `pnpm smoke:live --url https://poker-practice.marton-kadi.workers.dev --commit ef9c9081ea1077ed8b14928ce9103c9b789d7b71` exited 0 with `PASS all 12 steps`. Stable after 16.1 s on 5 consecutive probes, 0 of 5 mismatched. All 7 fetch steps observed entry `/assets/index-L8ZoQW0V.js` embedding the Candidate SHA with headers ok; a hand completed in 4.8 s (−544 chips) and its review matched History; 23 requests, all same origin; 8 responses header-checked.
+  - Live_Brand_Check (local, 2026-10-13 17:44 CDT): pass, 5 of 5. Ad-hoc Playwright Chromium script outside the repo (`%LOCALAPPDATA%\Temp\poker-brand\live-brand.mjs`), one fresh context, on `/`, `/play`, `/history`, `/settings` and `/about`: each showed banner link `♠ HeadsUp` and title `HeadsUp`, and `/poker\s*practice/i` matched nothing in the body text, title, `aria-label`, `title` or `alt` attributes.
+  - tag `v0.1.0-rc.2`: pass (2026-10-13). Annotated tag created at the Candidate and pushed alone. `git ls-remote --tags origin` shows `refs/tags/v0.1.0-rc.2` `b6172d7b2028a39f677643d4c21ea7352f78af7a`, peeling to `ef9c9081ea1077ed8b14928ce9103c9b789d7b71`.
+  - GitHub prerelease: pass (2026-10-13 22:46 UTC). https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.2, created with `gh release create --verify-tag --prerelease --latest=false`. `gh release list --json` shows `isPrerelease: true`, `isDraft: false`, `isLatest: false` for both `v0.1.0-rc.2` and `v0.1.0-rc.1`, and `GET /releases/latest` returns 404 (no release is latest).
+  - branch cleanup: pass (2026-10-13). `release/guest-mvp` (`8f91267`) and `deploy/3b431ed`, `deploy/911e9e9`, `deploy/9d15c68`, `deploy/d4f22b9` were each confirmed an ancestor of `origin/main` with `git merge-base --is-ancestor`, then deleted on GitHub and locally with `git branch -d`. Dependabot PRs #1–#5 were closed with `gh pr close --delete-branch` and a short comment; `.github/dependabot.yml` is unchanged. Afterwards `git ls-remote --heads origin` lists only `refs/heads/main`, `gh pr list --state open` is empty, and both tags and releases are intact.
 
 ## Release checks
 
@@ -283,11 +296,24 @@ MVP risks: action/tab/worker recovery, incomplete browser journeys, saved call/a
 
 ## Delivery
 
-Repository: https://github.com/martonkadi/poker-practice (private).
-Live_Site: https://poker-practice.marton-kadi.workers.dev (live since 2026-10-01; serves Candidate `3b431ed`, Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`; delivered 2026-10-04).
-Tag: `v0.1.0-rc.1` (annotated, pushed 2026-10-01; peels to Candidate `3b431ed369705604feb3602d268a98aaffcaedd1`).
-Prerelease: https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.1 (published 2026-10-01 21:03 CDT; prerelease, not a draft, not latest; verified 2026-10-04).
+Repository: https://github.com/martonkadi/poker-practice (private; only branch `main` since 2026-10-13).
+Live_Site: https://poker-practice.marton-kadi.workers.dev (live since 2026-10-01; serves rc.2 Candidate `ef9c908` since 2026-10-05, Cloudflare version `766b4327-307b-4549-b3fb-41fe748105ec`; delivered 2026-10-13). rc.1 Candidate `3b431ed` was served from 2026-10-01 to 2026-10-05 (Cloudflare version `8562db59-6141-4249-859d-380f9c3f1e6d`).
+Tags: `v0.1.0-rc.2` (annotated, pushed 2026-10-13; peels to `ef9c9081ea1077ed8b14928ce9103c9b789d7b71`); `v0.1.0-rc.1` (annotated, pushed 2026-10-01; peels to `3b431ed369705604feb3602d268a98aaffcaedd1`).
+Prereleases: https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.2 (published 2026-10-13 22:46 UTC) and https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.1 (published 2026-10-01 21:03 CDT); both prerelease, not a draft, not latest (verified 2026-10-13).
 Only create an MVP prerelease at the tested deployed commit after MVP-4 passes. Record exact checks, URLs and limitations.
+
+### rc.2 Delivery_Report (given to the Owner 2026-10-13)
+
+- Change: visible brand only. Header `♠ HeadsUp`, document title `HeadsUp`, `LICENSE` and `/license.txt` (`HeadsUp contributors`), export file `headsup-<date>.json`, README title and intro. CI runs on `main`; the Supabase `database` job runs only on manual dispatch.
+- Candidate_Commit: `ef9c9081ea1077ed8b14928ce9103c9b789d7b71` (tag `v0.1.0-rc.2`), deployed from `main`.
+- Checks at the Candidate, all recorded in MVP-5: local Release_Checks (lint, typecheck, Vitest 75, test:tools 36, rules fixtures 30, build, check:dist, three-browser suite 114 passed / 6 skipped / 0 failed, PokerKit 7 / 0, wide-font probe 108/108, 0 legacy-name matches in `dist`; local, 2026-10-04); screenshots from the Candidate `dist` (local, 2026-10-04); `ci.yml` run 37321952870 (Actions, exact SHA, pass); Deploy_Workflow run 37322005679 (Actions, pass, in-workflow smoke 12/12); live smoke 12/12 and Live_Brand_Check 5/5 (local against the Live_Site, 2026-10-13).
+- Cloudflare version: `766b4327-307b-4549-b3fb-41fe748105ec`.
+- Pull request: not opened (`main` is the release branch).
+- Kept_Identifiers: Worker `poker-practice`, root package `poker-practice`, `@poker/*` scope and `packages/` folders, IndexedDB `poker-practice`, export `format: "poker-practice"` and `schemaVersion: 1`, repository `martonkadi/poker-practice`, Live_Site URL.
+- Branches: only `main` remains on GitHub; Dependabot PRs #1–#5 closed with branches deleted.
+- Open Blocked_Gates: none.
+- Not run: the 60,000-hand strength benchmark (deferred, not passed).
+- Known limitations (unchanged from rc.1): storage is browser-only and is lost when browser data is cleared; no cross-device access; the opponent is experimental and its strength is unmeasured; the review shows the price of a call and does not grade decisions or estimate EV loss.
 
 ### rc.1 Delivery_Report (task 15.8, given to the Owner 2026-10-04)
 
