@@ -1,28 +1,25 @@
-# MVP work queue
+# Roadmap
 
-Ordered work for the owner-approved guest-only MVP. This file lists scope and order only; see [PLAN.md](PLAN.md) for milestone status, recorded checks and release identifiers. The [previous roadmap](docs/archive/pre-mvp-roadmap-2026-09-30.md) is kept for history.
+HeadsUp is live at https://poker-practice.marton-kadi.workers.dev, running `v0.1.0-rc.2`.
 
-## Wednesday September 30: simplify and repair
+## Releases
 
-1. Remove cloud initialization/account UI, difficulty selection, inactive animation controls and strategy recommendations from the MVP entry point. Preserve backend/policy code for later. Ship one experimental opponent.
-2. Create a manual static-only deployment path with no Supabase variables, migration or function dependency; identify the tested commit.
-3. Serialize session writes at entry; reject stale actions. Preserve start time/button alternation across hands. Cancel navigation work; replace failed workers for Retry.
-4. Reload when a waiting tab gains ownership. Handle corrupt/unavailable storage without silent overwrites or endless loading.
+### v0.1.0-rc.2: the HeadsUp name (live)
 
-## Thursday October 1: prove the user journey
+October 13, 2026. The site is now called HeadsUp. Gameplay, saved hands and exports are unchanged. [Release notes](https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.2)
 
-5. Record canonical actions and actual contributions, including street-closing/all-in calls. Add regression tests and conservation/replay checks.
-6. Review saved decision frames/exact pot odds; separate final outcomes; fix missing records. Retain export/deletion. Defer archive-import UI pending semantics.
-7. Test the built artifact: betting/showdown, three hands, reload, rapid clicks/keys, worker failure/retry, navigation, takeover after another tab advances, export/deletion, missing routes, keyboard and mobile. Use controlled fixtures without production backdoors.
-8. Run checks, independent PokerKit reference, three-browser suite; inspect screenshots and fix material usability failures.
+### v0.1.0-rc.1: first public version
 
-## Friday October 2: publish
+October 1, 2026. Play heads-up no-limit Hold'em against one experimental bot, save hands in your browser and step through your decisions with pot odds. [Release notes](https://github.com/martonkadi/poker-practice/releases/tag/v0.1.0-rc.1)
 
-9. Verify existing Cloudflare access and $0 constraints. Deploy the tested guest artifact. If blocked, record the exact provider step and continue independent acceptance work.
-10. Smoke real app/direct routes, local history/review and absence of cloud calls; record deployment/commit identifiers; create tested MVP prerelease; deliver URL and limitations.
+## Next
 
-October 3–4 is contingency for defects/access. Cut optional polish if necessary; do not waive legal betting/payout, local-data safety, hidden-card isolation or real deployment verification.
+The next step depends on how the site gets used. The candidates:
 
-## After MVP
+- **Better review.** More help understanding each decision, without claiming a "correct" answer the app can't back up.
+- **A stronger bot.** Only with a real benchmark that measures how strong it is.
+- **Accounts and sync.** Real sign-in so your hands follow you across devices. The cloud code in `supabase/` is a starting point. It's parked and not used by the site today.
 
-Choose the next goal from actual owner usage: better review/teaching, stronger evaluated policy, or real accounts/sync. Cloud requires the lifecycle/import/retention design and full authorization/deletion testing documented in the earlier audit. Difficulty claims require benchmarking. Six seats, continuous stacks and native solving remain separate future decisions. None automatically blocks this MVP.
+## Not planned yet
+
+Six-player tables, continuous stacks between hands, and solver-backed analysis.

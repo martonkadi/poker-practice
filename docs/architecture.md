@@ -1,11 +1,30 @@
 # Architecture
 
-`packages/contracts` defines integer cards (`rank = card % 13`, suits clubs/diamonds/hearts/spades), canonical `fold`/`check`/`call`/`raiseTo` actions, legal sets, redacted observations, and versioned completed records. `packages/poker` adapts the pinned `poker-engine-ts@0.1.3` engine. The committed pnpm patch fixes opening-blind contribution accounting and preserves the big blind’s option after a limp. The adapter generates a 52-card deck with Web Crypto rejection sampling and Fisher–Yates, validates actions against the engine’s current legal set, replays event logs, and returns only the acting player’s cards and public information to a policy.
+HeadsUp is a static single-page app. All game logic, the bot and storage run in your browser. There's no server-side code.
 
-The React app owns presentation and a single active local session. A Web Lock permits only one writing tab per account/guest namespace. Each action passes through the adapter, then the active private recovery state is persisted in Dexie. On settlement, a versioned record and signed-in sync-outbox entry are committed atomically. Another hand begins only after **Next hand**. Bot work is isolated in a Web Worker; each request has a UUID plus a hand ID and decision sequence in its observation. The UI ignores stale responses if the hand or sequence changed. Worker failure leaves the hand paused.
+## Packages
 
-`packages/analysis` evaluates seven-card hands and estimates equity from the decision-time board and player hole cards. Review stores the frame and visible cards at each decision; its estimator never receives the future board or opponent’s revealed cards. The completed-hand outcome is displayed separately. `packages/bots` contains the frozen `easy-v1` and `standard-v1` heuristics.
+- **`packages/contracts`** holds the shared types: integer cards (`rank = card % 13`; suits clubs, diamonds, hearts, spades), the `fold`/`check`/`call`/`raiseTo` actions, legal action sets, the redacted observation a player sees, and the versioned hand record.
+- **`packages/poker`** wraps the pinned `poker-engine-ts@0.1.3` engine. A pnpm patch in `patches/` fixes how opening blinds are counted and keeps the big blind's option after a limp. The adapter shuffles a 52-card deck with Web Crypto (rejection sampling and Fisher–Yates) and checks every action against the engine's current legal set. It replays event logs and gives each player only their own cards plus public information.
+- **`packages/bots`** contains the bot policies. The site uses `standard-v1`. `easy-v1` is still in the code but isn't offered. See [bot policy](bot-policy.md).
+- **`packages/analysis`** evaluates seven-card hands, estimates equity for the bot, and computes pot odds for review.
+- **`packages/persistence`** stores hands in IndexedDB through Dexie.
 
-Signed-in records are account-namespaced locally. Bookmarks have a separate Dexie store and offline queue, leaving uploaded hand records immutable during retries. `apps/web/src/cloud.ts` submits at most ten consecutive completed hands per RPC, only after play completes, then pulls retained cloud history in pages of 50 and reconciles bookmarks. The database locks the user's profile and producing session, validates sequence/size/configuration, updates aggregates once, and prunes detail to 500 hands/2 MiB. RLS permits owner reads; direct writes to hands, sessions and aggregates are revoked. Only the account-deletion Edge Function uses a service-role key. Browser builds contain only the public Supabase URL/key.
+## The app
 
-The browser is built by Vite and served as Cloudflare Workers Static Assets with SPA fallback and `_headers`. No server-side game or inference process is needed. The current adapter and UI expose only two named actors; a six-seat generalization remains a future milestone rather than a claimed v1 capability.
+`apps/web` is a React app built with Vite. It runs one local session at a time:
+
+- A Web Lock lets only one tab write at a time. If you open a second tab, it waits and takes over when the first one lets go.
+- Every action goes through the poker adapter, then the hand in progress is saved. When a hand ends, its record is saved, and the next hand starts only when you choose **Next hand**.
+- The bot runs in a Web Worker. Each request carries an ID, the hand ID and the decision number, and the app ignores any answer that arrives for an old decision. If the worker crashes or times out, the hand pauses and you can retry.
+- Review uses the cards and board you could see at each decision. The final board and the bot's cards are shown separately in the collapsed outcome.
+
+## Hosting
+
+Vite builds the site into `dist/`, and Cloudflare Workers serves it as static assets. Unknown paths fall back to `index.html`, so direct links like `/review/<id>` work. Security headers come from `apps/web/public/_headers`. See [deployment](deployment.md).
+
+## Parked cloud code
+
+The repo still has an unfinished account and sync design: `supabase/` (database migration and an account-deletion function), `tools/test-db.mjs`, the `database` job in `ci.yml` (manual runs only), and the account-scoped outbox and bookmark tables in `packages/persistence`. The site doesn't use any of it, and the production build contains no cloud code (`pnpm check:dist` checks this). It's kept as a starting point for real accounts later.
+
+The adapter and UI support exactly two players. Six-player tables would need new work, not just configuration.

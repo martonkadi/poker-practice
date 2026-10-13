@@ -1,9 +1,25 @@
-# Free-tier operations
+# Operations
 
-Keep recurring infrastructure spending at **$0**. The application has no server-side poker computation, hosted inference, email/password delivery, persistent Realtime connection, or domain purchase. Cloudflare serves static assets; Supabase Free stores capped completed hands. Check GitHub Actions usage and disable paid overage in repository/account settings. Do not enable paid provider plans automatically.
+HeadsUp costs nothing to run, and the goal is to keep it that way. It's static files on Cloudflare's free Workers plan. There's no server, database, inference service, email or paid domain.
 
-At least weekly after launch, inspect Supabase Dashboard database size and egress. Close new enrollment at 350 MB by running `update public.service_controls set enrollment_open = false where singleton = true;` in the project SQL editor as an administrator. Pause new sync writes at 400 MB with `update public.service_controls set sync_open = false where singleton = true;`. Keep both switches closed through quota investigation and until capacity is confirmed. The profile trigger also caps enrollment at 100 users; the sync RPC caps each record at 16 KiB, batches at ten, active upload sessions at ten, retained detail at 500 hands or 2 MiB, and session metadata at 100 recent sessions. Upload sessions expire after 30 days. Aggregate counters remain after detail pruning.
+## Keeping it free
 
-If Supabase pauses or rejects writes, guests and signed-in users can continue locally. Completed signed-in hands remain in the Dexie outbox; the app reports **Saved on this device; cloud sync unavailable.** It retries only transient network failures at 1- and 2-second intervals, stops after three attempts, and does not retry while offline. The browser attempts sync again after a completed hand, reconnect, opening History, or **Sync now**. An expired upload session cannot be recreated; export the local hands for safekeeping and begin a new session. Do not delete local history to clear cloud quotas.
+- Don't turn on paid plans or add-ons at Cloudflare or GitHub.
+- GitHub Actions minutes are the only usage that grows. Check the repository's Actions usage now and then, and keep paid overage switched off in the account billing settings.
+- Dependabot opens update PRs once a month. Merge them only after `ci.yml` passes.
 
-For an incident: record affected commit, provider status, database size, last acknowledged session sequence, and failing RPC message without copying private hand data into a public issue. Preserve the browser’s local export. If a frontend regression occurs, deploy the previous good commit and smoke-test guest play and direct routes. Do not automatically reverse a migration. Changes to bot thresholds require a new bot version and separate progress group.
+## When something breaks
+
+There's no server state, so nearly every problem comes from a build. To recover:
+
+1. Note the commit on the About page and what's wrong.
+2. Redeploy the last good commit or tag (see [deployment](deployment.md#roll-back)).
+3. Run `pnpm smoke:live` against the site for that commit.
+
+Players' hands live in their own browsers, so a bad deploy can't delete them. If a bug could corrupt saved hands, tell players to export from Settings before they keep playing.
+
+If you open an issue, don't paste anyone's exported hand history into it.
+
+## Parked: cloud quotas
+
+The unused Supabase design in `supabase/` has its own limits and switches: enrollment and sync caps, size limits and service controls. None of it is deployed. If accounts come back, write those operating steps again for the design that actually ships.
