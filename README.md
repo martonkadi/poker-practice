@@ -4,8 +4,6 @@ HeadsUp is a guest-only practice site for heads-up no-limit Texas Hold’em. You
 
 The opponent is not GTO and its strength has not been measured. The review shows the price of a call; it does not grade decisions or calculate EV loss.
 
-Project status lives in [PLAN.md](PLAN.md). This README describes behavior only.
-
 ![Desktop practice table](docs/screenshots/table-desktop.png)
 
 ![Decision review with pot odds](docs/screenshots/review-desktop.png)
@@ -31,7 +29,7 @@ These features are deferred. None of them is available in the app.
 - EV-loss grading
 - Strength benchmarking
 
-See [PLAN.md](PLAN.md) and [roadmap.md](roadmap.md) for planning.
+See [roadmap.md](roadmap.md) for planning.
 
 ## Quickstart
 
@@ -81,7 +79,5 @@ All data stays in this browser's IndexedDB. The app makes no requests to any ori
 See [architecture](docs/architecture.md) and [bot policy](docs/bot-policy.md) for implementation details, and the [deployment runbook](docs/deployment.md) for publishing the static site.
 
 ## Contributing and license
-
-Read [PLAN.md](PLAN.md), [AGENTS.md](AGENTS.md) and [roadmap.md](roadmap.md) before changing implementation.
 
 First-party code is [MIT licensed](LICENSE). [Third-party notices](THIRD_PARTY_NOTICES.md) cover the patched rules engine and the PokerKit reference.
