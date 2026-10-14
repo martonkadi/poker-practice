@@ -2,11 +2,10 @@ import React from 'react';
 import { GUEST_OWNER, getPreference, putPreference } from '@poker/persistence';
 import type { ChipUnit } from './format';
 import { useStoreStatus } from './storeStatus';
+import { subscribeLocalDeletion, withPreferenceLock } from './localData';
 
 export const PREFERENCE_LOAD_ERROR = 'Display preference could not be loaded.';
 export const PREFERENCE_SAVE_ERROR = 'Display preference could not be saved.';
-
-type AnimationSpeed = 'normal' | 'fast' | 'none';
 
 interface ChipUnitValue {
   unit: ChipUnit;
@@ -23,38 +22,49 @@ export function ChipUnitProvider({ children }: { children: React.ReactNode }) {
   const store = useStoreStatus();
   const [unit, setUnitState] = React.useState<ChipUnit>('chips');
   const [error, setError] = React.useState<string | null>(null);
-  // Set once the user (or a reset) has chosen a unit, so a slow load cannot overwrite it.
-  const decided = React.useRef(false);
-  const loadStarted = React.useRef(false);
-  // Kept from the loaded preference so saving the unit does not clobber it.
-  const animationSpeed = React.useRef<AnimationSpeed>('none');
-  // Serialises background writes so the last choice is the one stored.
-  const writes = React.useRef<Promise<void>>(Promise.resolve());
+  const request = React.useRef(0);
+  const pending = React.useRef<AbortController | null>(null);
 
   React.useEffect(() => {
     // Load once, after the boot-time open. A failed store keeps chips and writes nothing.
-    if (!store.ready || loadStarted.current) return;
-    loadStarted.current = true;
-    if (store.failed) return;
-    void getPreference(GUEST_OWNER).then(pref => {
-      animationSpeed.current = pref.animationSpeed;
-      if (!decided.current) setUnitState(pref.chipsAsBb ? 'bb' : 'chips');
-    }).catch(() => {
-      if (!decided.current) setError(PREFERENCE_LOAD_ERROR);
-    });
+    if (!store.ready || store.failed) return;
+    let readController: AbortController | undefined;
+    const reconcile = (locked: boolean) => {
+      readController?.abort();
+      const controller = new AbortController();
+      readController = controller;
+      const id = request.current;
+      const read = () => getPreference(GUEST_OWNER);
+      void (locked ? withPreferenceLock(read, controller.signal) : read()).then(pref => {
+        if (id === request.current && !controller.signal.aborted) { setUnitState(pref.chipsAsBb ? 'bb' : 'chips'); setError(null); }
+      }).catch(() => { if (id === request.current && !controller.signal.aborted) setError(PREFERENCE_LOAD_ERROR); });
+    };
+    reconcile(!!navigator.locks);
+    const unsubscribe = subscribeLocalDeletion(() => reconcile(true));
+    return () => { unsubscribe(); readController?.abort(); request.current++; pending.current?.abort(); };
   }, [store.ready, store.failed]);
 
   const setUnit = React.useCallback((next: ChipUnit) => {
-    decided.current = true;
+    const id = ++request.current;
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
     setUnitState(next);
     setError(null);
-    const pref = { owner: GUEST_OWNER, chipsAsBb: next === 'bb', animationSpeed: animationSpeed.current };
-    writes.current = writes.current.then(() => putPreference(pref)).catch(() => setError(PREFERENCE_SAVE_ERROR));
+    void withPreferenceLock(async () => {
+      if (id !== request.current) return;
+      const pref = await getPreference(GUEST_OWNER);
+      await putPreference({ ...pref, chipsAsBb: next === 'bb' });
+    }, controller.signal).then(() => {
+      if (id === request.current) setError(null);
+    }).catch(() => {
+      if (id === request.current && !controller.signal.aborted) setError(PREFERENCE_SAVE_ERROR);
+    });
   }, []);
 
   const resetUnit = React.useCallback(() => {
-    decided.current = true;
-    animationSpeed.current = 'none';
+    request.current++;
+    pending.current?.abort();
     setUnitState('chips');
     setError(null);
   }, []);

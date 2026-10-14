@@ -8,7 +8,7 @@ A second policy, `easy-v1`, is still in the code but the site doesn't offer it. 
 
 The bot deals random hole cards to its opponent and random runouts for the rest of the board, then counts how often it wins. Ties count as half. It only rules out its own cards and the public board, so it assumes your hand is random and doesn't adjust to how you play. `standard-v1` aims for 2,048 samples per decision and reports how many it actually ran.
 
-The worker samples in batches so a decision can be cancelled. It has a 1.5-second soft deadline and a 3-second watchdog. If the worker crashes or times out, the hand pauses so you can retry. It never swaps in a different bot.
+The worker samples in batches so a decision can be cancelled. It has a 1.5-second soft deadline and a 5-second watchdog. If the worker crashes or times out, the hand pauses so you can retry. It never swaps in a different bot.
 
 Pot odds (`call / (pot + call)`) and chip counts are exact. Equity is an estimate. The thresholds below are judgment calls.
 

@@ -5,7 +5,8 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HandRecord } from '@poker/contracts';
-import { db, deleteLocal, getPreference, GUEST_OWNER, importHands, putPreference } from '@poker/persistence';
+import { db, deleteLocal, getHandsPage, getPreference, GUEST_OWNER, importHands, putPreference } from '@poker/persistence';
+import { notifyLocalDeletion } from '../localData';
 import { ChipUnitProvider } from '../chipUnit';
 import { StoreStatusProvider } from '../storeStatus';
 import { History } from './History';
@@ -14,7 +15,7 @@ import { History } from './History';
 // and check that nothing was written.
 vi.mock('@poker/persistence', async importOriginal => {
   const real = await importOriginal<typeof import('@poker/persistence')>();
-  return { ...real, getPreference: vi.fn(real.getPreference), putPreference: vi.fn(real.putPreference) };
+  return { ...real, getHandsPage: vi.fn(real.getHandsPage), getPreference: vi.fn(real.getPreference), putPreference: vi.fn(real.putPreference) };
 });
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -69,7 +70,25 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   unmount();
+  vi.restoreAllMocks();
   await deleteLocal(GUEST_OWNER);
+});
+
+it('disables pagination while loading and refreshes to empty after deletion', async () => {
+  const many = Array.from({ length: 60 }, (_, i) => hand(i, i));
+  await importHands(GUEST_OWNER, JSON.stringify({ format: 'poker-practice', schemaVersion: 1, hands: many }));
+  await renderHistory();
+  expect(rows().size).toBe(50);
+  const next = [...container.querySelectorAll('button')].find(b => b.textContent === 'Next')!;
+  let release!: (result: Awaited<ReturnType<typeof getHandsPage>>) => void;
+  vi.mocked(getHandsPage).mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+  act(() => next.click()); await act(tick);
+  expect(next.disabled).toBe(true);
+  await act(async () => { await deleteLocal(GUEST_OWNER); notifyLocalDeletion(); });
+  await until(() => container.textContent!.includes('No completed hands yet.'), 'deleted history');
+  await act(async () => { release({ hands: HANDS, total: 63, page: 1 }); });
+  expect(rows().size).toBe(0);
+  expect(container.textContent).not.toContain('Page 2');
 });
 
 it('shows chips and lists every hand when no preference is stored, without writing one', async () => {

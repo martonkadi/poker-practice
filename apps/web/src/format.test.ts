@@ -1,10 +1,26 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { formatAmount } from './format';
+import { betInput, displayAction, formatAmount, formatBet, parseBet } from './format';
 
 const MINUS = '\u2212';
 
 const signPrefix = (n: number): string => (n > 0 ? '+' : n < 0 ? MINUS : '');
+
+it('parses exact bets and rejects drafts that cannot represent whole chips', () => {
+  expect(parseBet('2.01', 'bb')).toBe(201);
+  expect(parseBet('0.29', 'bb')).toBe(29);
+  for (const draft of ['', '-2', '2.', '.5', '2.001', '1e2', 'Infinity', ' 2']) expect(parseBet(draft, 'bb')).toBeNull();
+  expect(parseBet('201.1', 'chips')).toBeNull();
+  expect(parseBet('9007199254740992', 'chips')).toBeNull();
+  fc.assert(fc.property(fc.integer({ min: 0, max: 20_000 }), chips => {
+    expect(parseBet(betInput(chips, 'bb'), 'bb')).toBe(chips);
+    expect(parseBet(betInput(chips, 'chips'), 'chips')).toBe(chips);
+  }));
+  expect(formatBet(201, 'bb')).toBe('2.01 bb');
+  expect(displayAction({ kind: 'call' }, 50, 'bb')).toBe('Call 0.5 bb');
+  expect(displayAction({ kind: 'raiseTo', amount: 201 }, 151, 'bb')).toBe('Bet / raise to 2.01 bb');
+  expect(displayAction({ kind: 'raiseTo', amount: 201 }, 151)).toBe('Bet / raise to 201');
+});
 
 describe('formatAmount', () => {
   it('formats signed examples in chips and bb', () => {

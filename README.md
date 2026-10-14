@@ -10,11 +10,11 @@ HeadsUp is a practice site for heads-up no-limit Texas Hold'em. You play full 10
 
 ## What you can do
 
-- **Play.** Blinds are 50/100, both players start every hand with 10,000 chips, and the button alternates. Use the mouse or the keyboard. "Show bb" switches all amounts between chips and big blinds.
+- **Play.** Blinds are 50/100, both players start every hand with 10,000 chips, and the button alternates. Use the mouse or the keyboard. "Show bb" switches the table, bet input and actions between chips and big blinds. Bets accept hundredths of a big blind (one chip).
 - **Play the bot.** The opponent, `standard-v1`, runs in a Web Worker in your browser. It sees only its own cards and the public table. It never sees your cards, the deck or cards that haven't been dealt.
 - **Pick up where you left off.** Finished hands and the hand in progress are saved in your browser. Reload mid-hand and you're back in the same spot.
 - **Review your decisions.** History lists every hand and its result. Review steps through each of your decisions with your cards, the board at that moment, the pot, the price to call and the pot odds. The outcome stays hidden until you open it.
-- **Export or delete.** Settings downloads all your hands as a JSON file, and can delete everything after you confirm.
+- **Export or delete.** Settings downloads your hands as a compact JSON file, shows progress and lets you cancel. It can delete everything after you confirm.
 
 ## Good to know
 

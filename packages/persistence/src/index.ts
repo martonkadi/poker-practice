@@ -74,7 +74,21 @@ export async function saveCompleted(owner: string, record: HandRecord, active: A
 export async function listHands(owner: string): Promise<HandRecord[]> {
   const [rows, marks] = await Promise.all([db.hands.where('owner').equals(owner).toArray(), db.bookmarks.where('owner').equals(owner).toArray()]);
   const marked = new Map(marks.map(x => [x.handId, x.bookmarked]));
-  return rows.map(x => ({ ...x.record, bookmarked: marked.get(x.record.id) ?? false })).sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+  return rows.map(x => ({ ...x.record, bookmarked: marked.get(x.record.id) ?? false })).sort((a, b) => compareDescending(a.completedAt, b.completedAt) || compareDescending(a.id, b.id));
+}
+function compareDescending(a: string, b: string): number { return a === b ? 0 : a < b ? 1 : -1; }
+export const HANDS_PAGE_SIZE = 50;
+function orderedHands(owner: string) {
+  return db.hands.where('[owner+record.completedAt]').between([owner, Dexie.minKey], [owner, Dexie.maxKey]).reverse();
+}
+export async function getHandsPage(owner: string, requestedPage: number): Promise<{ hands: HandRecord[]; total: number; page: number }> {
+  return db.transaction('r', db.hands, db.bookmarks, async () => {
+    const total = await db.hands.where('owner').equals(owner).count();
+    const page = Math.max(0, Math.min(Number.isSafeInteger(requestedPage) ? requestedPage : 0, Math.max(0, Math.ceil(total / HANDS_PAGE_SIZE) - 1)));
+    const rows = await orderedHands(owner).offset(page * HANDS_PAGE_SIZE).limit(HANDS_PAGE_SIZE).toArray();
+    const marks = await db.bookmarks.bulkGet(rows.map(row => row.key));
+    return { total, page, hands: rows.map((row, i) => ({ ...row.record, bookmarked: marks[i]?.bookmarked ?? false })) };
+  });
 }
 export async function getHand(owner: string, id: string): Promise<HandRecord | undefined> {
   const key = `${owner}:${id}`;
@@ -109,7 +123,31 @@ export async function reconcileCloudBookmarks(owner: string, cloudIds: string[])
 export async function getPreference(owner: string): Promise<Preference> { return await db.preferences.get(owner) ?? { owner, chipsAsBb: false, animationSpeed: 'normal' }; }
 export async function putPreference(pref: Preference): Promise<void> { await db.preferences.put(pref); }
 export async function exportHands(owner: string): Promise<string> {
-  return JSON.stringify({ format: 'poker-practice', schemaVersion: 1, exportedAt: new Date().toISOString(), hands: await listHands(owner) }, null, 2);
+  return (await exportHandsBlob(owner)).text();
+}
+/** Capture membership and bookmarks together; completed hand bodies are immutable during play. */
+export async function exportHandsBlob(owner: string, onProgress: (completed: number, total: number) => void = () => {}): Promise<Blob> {
+  const exportedAt = new Date().toISOString();
+  const { keys, marks } = await db.transaction('r', db.hands, db.bookmarks, async () => ({
+    keys: await orderedHands(owner).primaryKeys(),
+    marks: await db.bookmarks.where('owner').equals(owner).toArray(),
+  }));
+  const marked = new Map(marks.map(mark => [mark.key, mark.bookmarked]));
+  const parts: BlobPart[] = [`{"format":"poker-practice","schemaVersion":1,"exportedAt":${JSON.stringify(exportedAt)},"hands":[`];
+  onProgress(0, keys.length);
+  for (let start = 0; start < keys.length; start += 100) {
+    const batch = keys.slice(start, start + 100);
+    const rows = await db.hands.bulkGet(batch);
+    const json = rows.map((row, i) => {
+      if (!row || row.owner !== owner || row.key !== batch[i]) throw new Error('A captured hand is no longer available');
+      const record = handRecordSchema.parse({ ...row.record, bookmarked: marked.get(row.key) ?? false });
+      return JSON.stringify(record);
+    }).join(',');
+    parts.push(new Blob([`${start ? ',' : ''}${json}`]));
+    onProgress(Math.min(start + 100, keys.length), keys.length);
+  }
+  parts.push(']}');
+  return new Blob(parts, { type: 'application/json' });
 }
 export async function importHands(owner: string, source: string): Promise<{ imported: number; duplicates: number }> {
   if (source.length > 20_000_000) throw new Error('Import exceeds 20 MB');

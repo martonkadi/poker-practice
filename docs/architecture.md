@@ -18,6 +18,9 @@ HeadsUp is a static single-page app. All game logic, the bot and storage run in 
 - Every action goes through the poker adapter, then the hand in progress is saved. When a hand ends, its record is saved, and the next hand starts only when you choose **Next hand**.
 - The bot runs in a Web Worker. Each request carries an ID, the hand ID and the decision number, and the app ignores any answer that arrives for an old decision. If the worker crashes or times out, the hand pauses and you can retry.
 - Review uses the cards and board you could see at each decision. The final board and the bot's cards are shown separately in the collapsed outcome.
+- Display preferences use a separate Web Lock. A unit choice queues its write immediately. Deletion takes the session lock, then the preference lock, and clears all local tables in one transaction. Other tabs receive a notification and read the current preference again.
+- History reads 50 hands at a time through the existing completion-time index. Hands are ordered by completion time descending, then ID descending when times match.
+- Export runs in a separate worker. It captures hand IDs and bookmarks together, then reads and validates 100 records at a time to build a compact JSON Blob. Hands completed after capture are excluded. A missing or unreadable captured hand fails the export without downloading a partial file. Progress and cancellation stay on the main thread. The archive schema and database version are unchanged.
 
 ## Hosting
 

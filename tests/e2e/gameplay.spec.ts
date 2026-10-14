@@ -267,7 +267,7 @@ test('a complete hand can be played with the keyboard only', async ({ page }) =>
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Raise', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Bet / raise to 200', { exact: true })).toBeVisible();
+  await expect(page.getByText('Bet / raise to 200 chips', { exact: true })).toBeVisible();
   // Then C (check/call) on every later hero decision until the hand ends.
   for (let i = 0; i < 50 && !await handComplete(page).isVisible(); i++) {
     await expect(handComplete(page).or(heroReady(page)).first()).toBeVisible(BOT_TURN);

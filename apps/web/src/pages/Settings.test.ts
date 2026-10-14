@@ -5,7 +5,8 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { handRecordSchema, type HandRecord } from '@poker/contracts';
-import { db, deleteLocal, exportHands, GUEST_OWNER, importHands, listHands, setBookmark, type ActiveSession } from '@poker/persistence';
+import { db, deleteLocal, exportHandsBlob, GUEST_OWNER, importHands, listHands, setBookmark, type ActiveSession } from '@poker/persistence';
+import { startHandsExport } from '../exportClient';
 import { ChipUnitProvider, useChipUnit } from '../chipUnit';
 import { StoreStatusProvider } from '../storeStatus';
 import { DELETE_CONFIRM_MESSAGE, DELETE_FAILED_MESSAGE, DELETE_LOCKED_MESSAGE, EXPORT_FAILED_MESSAGE, Settings } from './Settings';
@@ -13,8 +14,9 @@ import { DELETE_CONFIRM_MESSAGE, DELETE_FAILED_MESSAGE, DELETE_LOCKED_MESSAGE, E
 // Real store (fake-indexeddb); export and delete are wrapped so a test can make one call fail.
 vi.mock('@poker/persistence', async importOriginal => {
   const real = await importOriginal<typeof import('@poker/persistence')>();
-  return { ...real, exportHands: vi.fn(real.exportHands), deleteLocal: vi.fn(real.deleteLocal) };
+  return { ...real, deleteLocal: vi.fn(real.deleteLocal) };
 });
+vi.mock('../exportClient', () => ({ startHandsExport: vi.fn((owner: string) => ({ result: exportHandsBlob(owner), cancel: vi.fn() })) }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -99,7 +101,7 @@ beforeEach(async () => {
   await setBookmark(GUEST_OWNER, HANDS[0]!.id, true);
   await db.active.put({ id: 'session-1', owner: GUEST_OWNER, state: {}, difficulty: 'standard', nextSequence: 2, decisions: [], startedAt: HANDS[0]!.sessionStartedAt } as unknown as ActiveSession);
   await db.preferences.put(PREFERENCE);
-  vi.mocked(exportHands).mockClear();
+  vi.mocked(startHandsExport).mockClear();
   vi.mocked(deleteLocal).mockClear();
 });
 afterEach(async () => {
@@ -134,7 +136,7 @@ it('exports every saved hand as one poker-practice v1 file', async () => {
 it('downloads nothing and keeps the data when the export fails', async () => {
   const objectUrls = vi.spyOn(URL, 'createObjectURL');
   const clicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  vi.mocked(exportHands).mockRejectedValueOnce(new Error('read failed'));
+  vi.mocked(startHandsExport).mockImplementationOnce(() => ({ result: Promise.reject(new Error('read failed')), cancel: vi.fn() }));
   const before = await snapshot();
   await renderSettings();
   await click('Export JSON');
@@ -142,6 +144,32 @@ it('downloads nothing and keeps the data when the export fails', async () => {
   expect(objectUrls).not.toHaveBeenCalled();
   expect(clicks).not.toHaveBeenCalled();
   expect(await snapshot()).toEqual(before);
+});
+
+it('shows progress, prevents duplicate exports and deletion, and cancels without downloading', async () => {
+  let reject!: (error: Error) => void;
+  const cancel = vi.fn(() => reject(new DOMException('Cancelled', 'AbortError')));
+  vi.mocked(startHandsExport).mockImplementationOnce((_owner, progress) => {
+    progress({ completed: 100, total: 200 });
+    return { result: new Promise<Blob>((_resolve, fail) => { reject = fail; }), cancel };
+  });
+  const clicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  await renderSettings(); await click('Export JSON');
+  expect(text()).toContain('Exporting 100 of 200 hands');
+  expect(button('Export JSON').disabled).toBe(true); expect(button('Delete local data').disabled).toBe(true);
+  await click('Cancel export');
+  expect(cancel).toHaveBeenCalledTimes(1); expect(clicks).not.toHaveBeenCalled();
+  expect(text()).toContain('Export cancelled.'); expect(text()).not.toContain(EXPORT_FAILED_MESSAGE);
+  expect(button('Export JSON').disabled).toBe(false);
+});
+
+it('cancels an unfinished export when Settings unmounts', async () => {
+  let reject!: (error: Error) => void;
+  const cancel = vi.fn(() => reject(new DOMException('Cancelled', 'AbortError')));
+  vi.mocked(startHandsExport).mockImplementationOnce(() => ({ result: new Promise<Blob>((_resolve, fail) => { reject = fail; }), cancel }));
+  const clicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  await renderSettings(); await click('Export JSON'); unmount(); unmount = () => {};
+  await act(tick); expect(cancel).toHaveBeenCalledTimes(1); expect(clicks).not.toHaveBeenCalled();
 });
 
 it('asks for confirmation and keeps everything when the guest cancels', async () => {
